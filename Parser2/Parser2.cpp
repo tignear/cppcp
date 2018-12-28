@@ -1,12 +1,8 @@
-﻿// Parser2.cpp : アプリケーションのエントリ ポイントを定義します。
-//
-
-#include "Parser2.h"
-
-using namespace std;
-
-int main()
-{
-	cout << "Hello CMake。" << endl;
-	return 0;
-}
+﻿#include "Parser2.h"
+#include <string>
+#include <iostream>
+/*int main() {
+	std::string str = "aaaaaa";
+	std::cout << tig::parser::any(str.begin()) << std::endl;
+	system("pause");
+}*/
