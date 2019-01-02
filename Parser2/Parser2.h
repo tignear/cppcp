@@ -3,8 +3,92 @@
 #include <functional>
 #include <optional>
 #include <tuple>
+#include <variant>
 namespace tig::parser {
+	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+	template<class Target, class... Other>
+	struct is_same_any {
 
+	};
+	template<class Target>
+	struct is_same_any<Target> {
+		constexpr static bool value = false;
+	};
+	template<class Target,class OtherH,class... OtherT>
+	struct is_same_any<Target, OtherH,OtherT...> {
+		constexpr static bool value = std::is_same_v<Target, OtherH>|| is_same_any<Target, OtherT...>::value;
+	};
+	template<class Target, class... Other>
+	constexpr bool is_same_any_v = is_same_any<Target, Other...>::value;
+
+
+	template<class Tuple,size_t index>
+	using get_t = decltype(std::get<index>(std::declval<Tuple>()));
+
+	template < class Target,class Tuple, size_t ...I >
+	struct tupled_is_same_any_impl {
+		constexpr tupled_is_same_any_impl(Target,Tuple,std::index_sequence<I...>) {
+
+		}
+		constexpr static bool value = is_same_any_v < std::decay_t<Target>, std::decay_t< get_t<std::decay_t<Tuple>, I>>... > ;
+	};
+	template <class Target>
+	struct tupled_is_same_any_impl<std::tuple<>, Target> {
+		constexpr tupled_is_same_any_impl(Target, std::tuple<>, std::index_sequence<>) {
+
+		}
+		constexpr static bool value =false;
+	};
+	template < class Target, class Tuple >
+	struct tupled_is_same_any {
+		constexpr static bool value = decltype(tupled_is_same_any_impl(std::declval<Target>(), std::declval<Tuple>(),std::make_index_sequence<std::tuple_size_v<std::decay_t<Tuple>>>{}))::value;
+	};
+	template < class Target, class Tuple >
+	constexpr bool tupled_is_same_any_v = tupled_is_same_any<Target,Tuple>::value;
+
+	template <class Tuple, size_t index, class... Processed>
+	struct unique_type_impl;
+	template <bool end, class Tuple, size_t index, class... Processed>
+	struct unique_type_impl_if {
+
+	};
+	template <class Tuple, size_t index, class... Processed>
+	struct unique_type_impl_if<true,Tuple,index, Processed...>{
+		using type = std::tuple<Processed...>;
+	};
+	template <class Tuple, size_t index, class... Processed>
+	struct unique_type_impl_if<false, Tuple, index, Processed...> {
+		using type = std::conditional_t<
+			tupled_is_same_any_v<std::decay_t<get_t<Tuple, index>>, std::tuple<Processed...>>,
+			typename unique_type_impl<Tuple, index + 1, Processed...>::type,
+			typename unique_type_impl<Tuple, index + 1, get_t<Tuple, index>, Processed...>::type
+		>;
+	};
+	template <class Tuple, size_t index, class... Processed>
+	struct unique_type_impl {
+		using type = typename unique_type_impl_if<index == std::tuple_size_v<Tuple>, Tuple, index, std::decay_t<Processed>...>::type;
+	};
+
+	template <class... Targets>
+	using unique_type_t =typename unique_type_impl<std::tuple<Targets...>, 0>::type;
+	template < class From, size_t ...I >
+	struct convart_wrapping_object_impl {
+		constexpr convart_wrapping_object_impl(From, std::index_sequence<I...>){}
+		template < template<class...> class To >
+		struct value {
+			using type=To<std::decay_t<get_t<From, I>>...>;
+		};
+	};
+	template < class From, template<class...> class To >
+	struct convart_wrapping_object {
+		using type = typename decltype(decltype(convart_wrapping_object_impl(
+			std::declval<From>(),std::make_index_sequence<std::tuple_size_v<std::decay_t<From>>>{}
+		))::value<To>{})::type;
+	};
+	template < class From, template<class...> class To >
+	using convart_wrapping_object_t = typename convart_wrapping_object<From, To>::type;
+	convart_wrapping_object_t<std::tuple<int>, std::variant> x = std::variant<int>(0);
 	template<class Src, class R>
 	class ret;
 	template<class Src, class R,class T>
@@ -17,9 +101,26 @@ namespace tig::parser {
 		constexpr ret<Src,R> operator()(Src&& src)const {
 			return static_cast<const T&>(*this).parse(std::move(src));
 		}
-	};
 
-	
+	};
+	template<class Ph, class... Pt>
+	struct parser_type_traits {
+		using source_type = typename std::remove_reference_t<Ph>::source_type;
+		using result_type = typename std::remove_reference_t<Ph>::result_type;
+		using self_type = typename std::remove_reference_t<Ph>::self_type;
+		constexpr static bool is_parser=std::is_base_of_v<parser<source_type, result_type, Ph>, Ph>;
+
+	};
+	template<class... T>
+	using result_type_t = typename parser_type_traits<T...>::result_type;
+	template<class... T>
+	using source_type_t = typename parser_type_traits<T...>::source_type;
+	template<class... T>
+	using self_type_t = typename parser_type_traits<T...>::self_type;
+
+
+
+
 	template<class Src, class Out>
 	struct parser_type {
 		template<class Fn>
@@ -49,10 +150,6 @@ namespace tig::parser {
 		constexpr to<Src,Out> build() {
 			return parser_f<Src, Out, Fn>{f_};
 		}
-		/*template<class Src, class Out>
-		constexpr to<Src, Out> operator()() {
-			return parser_f<Src, Out, Fn>{f};
-		}*/
 	};
 	template<class Src,class R>
 	class ret {	
@@ -287,28 +384,7 @@ namespace tig::parser {
 	struct is_skip_tag<skip_tag> {
 		static const constexpr bool value = true;
 	};
-	template <bool b,class R>
-	struct join_type_single_supplier {
-		using result_type = std::tuple<R>;
-	};
-	template<class R>
-	struct join_type_single_supplier<true,R> {
-		using result_type = std::tuple<>;
-	};
-	template<template <class Target> class SkipJudge, class... >
-	struct join_type_supplier 
-	{ 
-		using result_type = std::tuple<>;
-	};
-	template<template <class Target> class SkipJudge,class R,class... Rs>
-	struct join_type_supplier<SkipJudge,R,Rs...> {
-		using result_type = decltype(
-			std::tuple_cat
-			(
-				std::declval<typename join_type_single_supplier<SkipJudge<R>::value,R>::result_type>(), std::declval<typename join_type_supplier<SkipJudge,Rs...>::result_type>()
-			)
-		);
-	};
+
 	template<size_t v>
 	struct not_zero {
 		const static constexpr bool value = true;
@@ -317,136 +393,160 @@ namespace tig::parser {
 	struct not_zero<size_t(0)> {
 		const static constexpr bool value = false;
 	};
-	/*template <class Src, template <class Target> class SkipJudge, class R1,class Fn>
-	constexpr auto join(
-		parser<Src, R1,Fn> p1,
-		typename std::enable_if<SkipJudge<R1>::value>::type* = 0
-	) {
-		return parser{ [=](Src&& src) {
-			return p1(std::move(src)).flatMap<Src, std::tuple<>>([](auto&& itr,auto&& ignore) {
-				return ret<Src, std::tuple<>>{itr, std::make_tuple()};
-			});
-		} };
-	}
-	template <class Src, template <class Target> class SkipJudge,class R1,class S>
-	constexpr auto join(
-		parser<Src, R1,S> p1,
-		std::enable_if_t <!SkipJudge<R1>::value>* = 0
-	) {
-		return parser_builder{ [=](Src&& src) {
-			return p1(std::move(src)).map< std::tuple<R1>>([](auto&& e) {return std::make_tuple(e); });
-		} }.build<Src, std::tuple<R1>>();
-	}
-	template <class Src, class R1,class S>
-	constexpr auto join(
-		parser<Src, R1,S> p1,
-		std::enable_if_t < !is_skip_tag<R1>::value>* = 0
-	) {
-		return join<Src, is_skip_tag, R1,S>(p1);
-	}
-	template <class Src, class R1,class Fn>
-	constexpr auto join(
-		parser<Src, R1,Fn> p1,
-		std::enable_if_t < is_skip_tag<R1>::value>* = 0
-	) {
-		return join<Src, is_skip_tag, R1,Fn>(p1);
-	}
 
-	template <class Src, template <class Target> class SkipJudge,class R1,class Fn,class... RFs>
-	constexpr auto join(
-		parser<Src, R1,Fn> p1, parser<Src, decltype(std::get<0>(std::declval<RFs>())), decltype(std::get<1>(std::declval<RFs>()))>...  ps,
-		std::enable_if_t<not_zero<sizeof...(RFs)>::value>* = 0
-	) {
-		return typename parser_type<Src, typename join_type_supplier<SkipJudge, R1, decltype(std::get<0>(std::declval<RFs>()))...>::result_type>::type{ [=](Src&& src) {
-			auto&& r = join<Src, SkipJudge,R1>(p1)(std::move(src));
-			auto&& r2 = join<Src, SkipJudge,Rs...>(ps...)(std::move(r.itr()));
-			return ret<Src, typename join_type_supplier<SkipJudge,R1, Rs...>::result_type>{ r2.itr(),std::tuple_cat(std::tuple{std::move(r.get())},r2.get()) };
-		} };
-	}
-	template <class Src,class R1,class Fn, class... RFs>
-	constexpr auto join(
-		parser<Src, R1,Fn> p1, parser<Src, decltype(std::get<0>(std::declval<RFs>())), decltype(std::get<1>(std::declval<RFs>()))>...  ps,
-		std::enable_if_t<not_zero<sizeof...(RFs)>::value>* = 0
-	) {
-		return join<Src, is_skip_tag, R1, RFs...>(p1,ps...);
-	}*/
-
-
-
-	template<class Src,class Tuple,size_t index,size_t size>
-	constexpr ret<Src,
-		decltype(
+	/*
+	join start
+	*/
+	template<bool b, class P>
+	struct join_result_type_single_supplier {
+		using type = std::tuple<P>;
+	};
+	template<class P>
+	struct join_result_type_single_supplier<true, P> {
+		using type = std::tuple<>;
+	};
+	template<template<class Target> class SkipJudge, class... Ps>
+	struct join_result_type_supplier {};
+	template<template<class Target> class SkipJudge, class Ph, class... Pt>
+	struct join_result_type_supplier<SkipJudge, Ph, Pt...> {
+		using type = decltype(
 			std::tuple_cat(
-				std::declval<std::tuple<typename std::remove_reference_t<decltype(std::get<index>(std::declval<Tuple>()))>::result_type>>(),
-				std::declval<decltype(join_impl<Src,Tuple,index+1,size>(std::declval<Src>(),std::declval<Tuple>()).get())>()
+				std::declval<typename join_result_type_single_supplier<SkipJudge<result_type_t<Ph>>::value, result_type_t<Ph>>::type>(),
+				std::declval<typename join_result_type_supplier<SkipJudge, Pt...>::type >()
 			)
-		)
-	>join_impl(Src&& src, Tuple tuple, std::enable_if_t<index != size>* = 0) {
-		auto  r = std::get<index>(tuple)(std::move(src));
-		auto r2 = join_impl<Src, Tuple, index + size_t(1), size>(std::move(r.itr()), std::move(tuple));
-		return ret{r2.itr(), std::tuple_cat(std::tuple{ r.get() }, r2.get())};
+			);
+	};
+	template<template<class Target> class SkipJudge>
+	struct join_result_type_supplier<SkipJudge> {
+		using type = std::tuple<>;
+	};
+
+	template<class Src,class Tuple,template<class Target> class SkipJudge,size_t index,size_t size>
+	constexpr auto join_impl(
+		Src&& src,
+		Tuple tuple,
+		std::enable_if_t<index != size>* = 0,
+		std::enable_if_t<
+			!SkipJudge<
+				typename std::remove_reference_t<decltype(std::get<index>(std::declval<Tuple>()))>::result_type>::value
+		>* =0
+	) {
+		auto r = std::get<index>(tuple)(std::move(src));
+		auto r2 = join_impl<Src, Tuple, SkipJudge, index + size_t(1), size>(std::move(r.itr()), std::move(tuple));
+		return ret{ r2.itr(), std::tuple_cat(std::tuple{ r.get() }, r2.get()) };
 	}
-	template<class Src, class Tuple, size_t index, size_t size>
+	template<class Src, class Tuple, template<class Target> class SkipJudge, size_t index, size_t size>
+	constexpr auto join_impl(
+		Src&& src,
+		Tuple tuple,
+		std::enable_if_t<index != size>* = 0,
+		std::enable_if_t<
+			SkipJudge<typename std::remove_reference_t<decltype(std::get<index>(std::declval<Tuple>()))>::result_type>::value
+		>* = 0
+	) {
+		auto r = std::get<index>(tuple)(std::move(src));
+		auto r2 = join_impl<Src, Tuple, SkipJudge, index + size_t(1), size>(std::move(r.itr()), std::move(tuple));
+		return ret{ r2.itr(), r2.get() };
+	}
+	template<class Src, class Tuple, template<class Target> class SkipJudge, size_t index, size_t size>
 	constexpr ret<Src,std::tuple<>> join_impl(Src&& src, Tuple&& tuple, std::enable_if_t<index == size>* = 0) {
 		return ret{ src,std::make_tuple() };
 	}
-	template<class T>
-	using result_type_t = typename std::remove_reference_t<T>::result_type;
-	template<class Src, class... Parsers>
-	struct join :public parser<Src, std::tuple<result_type_t<Parsers>...>, join<Src ,Parsers...>> {
-		std::tuple<Parsers...> ps_;
-		constexpr join(Parsers... ps):ps_(std::tuple{ ps... }) {}
-		constexpr join(std::tuple<Parsers...> ps) : ps_(ps) {}
 
-		constexpr ret<Src, std::tuple<result_type_t<std::remove_reference_t<Parsers>>...>> parse(
+	template<class Src, template<class Target> class SkipJudge, class... Parsers>
+	struct join :public parser<
+		Src,
+		typename join_result_type_supplier<SkipJudge, Parsers...>::type,
+		join<Src, SkipJudge, Parsers...>
+	> {
+		join() = delete;
+	};
+
+	template<class Src, template<class Target> class SkipJudge,class P1,class... Parsers>
+	class join<Src, SkipJudge, P1,Parsers...> :public parser<
+		Src,
+		typename join_result_type_supplier<SkipJudge,P1,Parsers...>::type,
+		join<Src , SkipJudge,P1,Parsers...>
+	> {
+		std::tuple<P1,Parsers...> ps_;
+	public:
+		constexpr join(P1 p1,Parsers... ps):ps_(std::tuple{ p1,ps... }) {}
+		constexpr join(std::tuple<P1,Parsers...> ps) : ps_(ps) {}
+
+		constexpr decltype(
+			join_impl<Src, std::tuple<P1,std::remove_reference_t<Parsers>...>, SkipJudge, 0, 1+sizeof...(Parsers)>(std::move(std::declval<Src>()), std::declval<std::tuple<P1,Parsers...>>())
+		)parse(
 			Src&& src
 		)const {
-			return join_impl<Src, std::tuple<std::remove_reference_t<Parsers>...>,0,sizeof...(Parsers)>(std::move(src),ps_);
+			return join_impl<Src,std::tuple<P1, std::remove_reference_t<Parsers>...>, SkipJudge,0,1+sizeof...(Parsers)>(std::move(src),ps_);
 		}
 	};
 	
 
+	template<class Src, template<class Target> class SkipJudge>
+	struct join<Src, SkipJudge> :public parser<Src, std::tuple<>, join<Src, SkipJudge>> {
+		constexpr join() {}
+		constexpr ret<Src, std::tuple<>> parse(Src&& src)const {
+			return ret{ src,std::make_tuple() };
+		}
+	};
 	template<class Src>
-	struct join<Src> :public parser<Src, std::tuple<>, join<Src>> {
+	struct join<Src,is_skip_tag> :public parser<Src, std::tuple<>, join<Src, is_skip_tag>> {
+		constexpr join(){}
 		constexpr ret<Src, std::tuple<>> parse(Src&& src)const {
 			return ret{ src,std::make_tuple() };
 		}
 	};
 
-	template<class Ph ,class... Pt>
-	struct parser_type_traits {
-		using source_type =typename std::remove_reference_t<Ph>::source_type;
-	};
-	template<class... Parsers>
+	template<class... Parsers, std::enable_if_t<parser_type_traits<Parsers...>::is_parser, nullptr_t> = nullptr>
 	join(
 		Parsers... p
-	)->join<typename parser_type_traits<Parsers...>::source_type,Parsers...>;
+	)->join<typename parser_type_traits<Parsers...>::source_type,is_skip_tag,Parsers...>;
 
-
-
+	template<template<class Target> class SkipJudge,class... Parsers, std::enable_if_t<parser_type_traits<Parsers...>::is_parser, nullptr_t> =nullptr>
+	join(
+		Parsers... p
+	)->join<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>;
+	template<class Src>
+	join()->join<Src,is_skip_tag>;
+	/*
+		pure join end
+		custom join start
+	*/
+	template <template<class Target> class SkipJudge>
+	struct join_c {
+		join_c() = delete;
+		template <class... Parsers>
+		constexpr static auto join(Parsers... ps) {
+			return tig::parser::join<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>{ps...};
+		}
+	};
+	/*
+	custom join end
+	*/
 	template<class Src,class V,class Fn>
 	constexpr auto skip(parser<Src, V,Fn> p) {
-		return typename parser_type<Src, skip_tag>::type{ [=](Src&& src) {
+		return parser_builder{ [=](Src&& src) {
 			return ret<Src, skip_tag> { p(std::move(src)).itr(), skip_tag{} };
-		} };
+		} }.build<Src, skip_tag>();
 	}
 	template<class Src,class V,class Fn>
 	constexpr auto skipN(parser<Src, V,Fn> p,typename std::iterator_traits<Src>::difference_type n) {
-		return typename parser_type<Src, skip_tag>::type{ [=](Src&& src) {
+		return parser_builder{ [=](Src&& src) {
 			auto&& itr = src;
 			for (auto i = 0; i < n; ++i)
 			{
 				itr = p(std::move(itr)).itr();
 			}
 			return ret<Src, skip_tag>{itr, skip_tag{}};
-		} };
+		} }.build<Src, skip_tag>();
 	}
 	template<class Src>
-	constexpr typename parser_type<Src, skip_tag>::type skipN(typename std::iterator_traits<Src>::difference_type n) {
-		return [=](Src&& src) {
+	constexpr typename auto skipN(typename std::iterator_traits<Src>::difference_type n) {
+		return parser_builder{ [=](Src&& src) {
 			std::advance(src, n);
 			return ret<Src, skip_tag>{ src,skip_tag{} };
-		};
+		} }.build<Src, skip_tag>();
 	}
 	template<class Src,class Fn,class... Rs>
 	constexpr parser<Src,std::tuple<Rs...>,Fn> empty_tuple_as_skip(
@@ -456,22 +556,89 @@ namespace tig::parser {
 		return p;
 	}
 	template<class Src,class Fn, class... Rs>
-	constexpr typename parser_type<Src, skip_tag>::type empty_tuple_as_skip(
+	constexpr typename auto empty_tuple_as_skip(
 		parser<Src, std::tuple<Rs...>,Fn> p,
 		std::enable_if_t<!not_zero<sizeof...(Rs)>::value>* = 0
 	) {
-		return [=](Src&& src) {
+		return parser_builder{ [=](Src&& src) {
 			return ret<Src, skip_tag>{p(std::move(src)).itr(), skip_tag{}};
-		};
+		} }.build<Src, skip_tag>();
 	}
-	
-	template<class Src,class M, class Fn,class R=M>
-	constexpr typename parser_type<Src, R>::type map(parser<Src,M,Fn> p,std::function<R(M)> mapping) {
-		return [=](Src&& src) {
-			return p(std::move(src)).map<R>(mapping);
-		};
+	template<class P, class F>
+	class map:public parser<typename parser_type_traits<P>::source_type,std::invoke_result_t<F,result_type_t<P>>,map<P,F>> {
+		P p_;
+		F mapping_;
+	public:
+		constexpr map(P p, F mapping):p_(p),mapping_(mapping) {}
+		constexpr auto parse(source_type_t<P>&& src)const {
+			return p_(std::move(src)).map<std::invoke_result_t<F, result_type_t<P>>>(mapping_);
+		}
+	};
+	template<class Src, class F, class R, class Tuple, size_t index, size_t size>
+	constexpr R trys_impl(Src&&, F,Tuple, std::enable_if_t<index == size>* = 0) {
+		throw std::invalid_argument("");
 	}
 
+	template<class Src,class F,class R,class Tuple,size_t index,size_t size>
+	constexpr R trys_impl(Src&& src,F f,Tuple tuple,std::enable_if_t<index!=size>* =0) {
+		auto m = src;
+		auto r = std::get<index>(tuple)(std::move(src));
+		if (f(r.get())) {
+			return { r.itr(),r.get() };
+		}
+		return trys_impl<Src, F, R,Tuple,index+1,size>(std::move(m),f,tuple);
+	}
+
+	template<class F, class... Parsers>
+	class trys:public parser<
+		typename parser_type_traits<Parsers...>::source_type,
+		typename std::common_type<result_type_t<Parsers>...>::type,
+		trys<F,Parsers...>
+	> {
+		F f_;
+		std::tuple<Parsers...> parsers_;
+	public:
+		constexpr trys(F f, Parsers... parsers) :f_(f), parsers_{ parsers... } {}
+		constexpr trys(F f) : f_(f), parsers{} {
+			static_assert(false,"parsers are one or more args required.");
+		}
 
 
+		constexpr ret<
+			typename parser_type_traits<Parsers...>::source_type,
+			typename std::common_type<result_type_t<Parsers>...>::type
+		> parse(typename parser_type_traits<Parsers...>::source_type&& src)const {
+			return trys_impl<typename parser_type_traits<Parsers...>::source_type, F, ret<
+				typename parser_type_traits<Parsers...>::source_type,
+				typename std::common_type<result_type_t<Parsers>...>::type
+			>, std::tuple<Parsers...> ,0,sizeof...(Parsers)>(
+				std::move(src),f_,parsers_
+				);
+		}
+	};
+	template<class F,class... Parsers>
+	class trys_variant:public parser<
+		typename parser_type_traits<Parsers...>::source_type,
+		convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>, std::variant>,
+		trys_variant<F,Parsers...>
+	> {
+		F f_;
+		std::tuple<Parsers...> ps_;
+	public:
+		constexpr trys_variant(F f, Parsers... ps) :f_(f), ps_{ ps...}{
+		}
+		constexpr ret<
+			source_type_t<Parsers...>,
+			convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>, std::variant>
+		> parse(source_type_t<Parsers...>&& src)const {
+			return trys_impl<
+				source_type_t<Parsers...>,
+				F,
+				ret<source_type_t<Parsers...>, convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>,std::variant>>,
+				std::tuple<Parsers...>,
+				0,
+				sizeof...(Parsers)
+			>(std::move(src), f_, ps_);
+		}
+	};
 }
