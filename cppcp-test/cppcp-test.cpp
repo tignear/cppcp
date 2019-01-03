@@ -122,7 +122,8 @@ TEST(CppCP, join2)
 	using namespace tig::cppcp;
 
 	std::vector<int> target{-1,0 ,1,2,3,4,5 };
-	auto&& fn=join(any<vitr<int>>(), fold(
+	auto an = any<vitr<int>>();
+	auto&& fn=join(an, fold(
 		any_unless_end(cend(target)),
 		sup<vitr<int>,int>(6),
 		exit_if_nullopt<int, int>([](auto && a, auto&& e) {
