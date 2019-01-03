@@ -101,7 +101,7 @@ TEST(CppCP, reduce)
 }
 TEST(CppCP, join0) {
 	auto && target = std::vector<int>{ -1, 0, 1, 2, 3, 4, 5 };
-	auto && r = tig::cppcp::join<vitr<int>,tig::cppcp::is_skip_tag>()(cbegin(target));
+	auto && r = tig::cppcp::join<vitr<int>>()(cbegin(target));
 	EXPECT_EQ(r.get(),std::make_tuple());
 	EXPECT_EQ(r.itr(), cbegin(target));
 }
