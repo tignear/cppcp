@@ -305,7 +305,7 @@ namespace tig::cppcp {
 	constexpr auto sup()
 	{
 		auto f = [=](Src&& src) {
-			return ret<Src,RT>{src, rv};
+			return ret<Src,RT>{src, v};
 		};
 		return parser_f<Src, RT, decltype(f)>{
 			f

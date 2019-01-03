@@ -34,6 +34,14 @@ TEST(CppCP, sup)
 	EXPECT_EQ(r.get(), 6 );
 	EXPECT_EQ(r.itr(), cbegin(target));
 }
+TEST(CppCP, sup_temp)
+{
+	std::vector<int> target{ 1,2,3,4,5 };
+	auto&& fn = tig::cppcp::sup<vitr<int>, int,6>();
+	auto&& r = fn(cbegin(target));
+	EXPECT_EQ(r.get(), 6);
+	EXPECT_EQ(r.itr(), cbegin(target));
+}
 TEST(CppCP, any_unless_end)
 {
 	std::vector<int> target{ 1,2,3,4,5 };
