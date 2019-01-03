@@ -456,7 +456,6 @@ namespace tig::cppcp {
 		join<Src, Parsers...>
 	> {
 		constexpr join( Parsers... ps) :ps_(std::tuple{ ps... }) {}
-		constexpr join(std::tuple<Parsers...> ps) : ps_(ps) {}
 
 		constexpr decltype(
 			join_impl<source_type_t<Parsers...>, std::tuple< std::remove_reference_t<Parsers>...>, is_skip_tag, 0, sizeof...(Parsers)>(std::move(std::declval<source_type_t<Parsers...>>()), std::declval<std::tuple< Parsers...>>())
@@ -483,7 +482,6 @@ namespace tig::cppcp {
 		std::tuple<P1,Parsers...> ps_;
 	public:
 		constexpr join_c_impl(P1 p1,Parsers... ps):ps_(std::tuple{ p1,ps... }) {}
-		constexpr join_c_impl(std::tuple<P1,Parsers...> ps) : ps_(ps) {}
 
 		constexpr decltype(
 			join_impl<source_type_t<P1>, std::tuple<P1,std::remove_reference_t<Parsers>...>, SkipJudge, 0, 1+sizeof...(Parsers)>(std::move(std::declval<source_type_t<P1>>()), std::declval<std::tuple<P1,Parsers...>>())
@@ -528,7 +526,7 @@ namespace tig::cppcp {
 		}
 	};
 
-	template<class... Parsers, std::enable_if_t<parser_type_traits<Parsers...>::is_parser, nullptr_t> = nullptr>
+	template<class... Parsers>
 	join(
 		Parsers... p
 	)->join<typename parser_type_traits<Parsers...>::source_type,Parsers...>;
