@@ -477,7 +477,25 @@ namespace tig::cppcp {
 			return join_impl<Src,std::tuple<P1, std::remove_reference_t<Parsers>...>, SkipJudge,0,1+sizeof...(Parsers)>(std::move(src),ps_);
 		}
 	};
-	
+	template<class Src,  class P1, class... Parsers>
+	class join<Src, is_skip_tag, P1, Parsers...> :public parser<
+		Src,
+		typename join_result_type_supplier<is_skip_tag, P1, Parsers...>::type,
+		join<Src, is_skip_tag, P1, Parsers...>
+	> {
+		std::tuple<P1, Parsers...> ps_;
+	public:
+		constexpr join(P1 p1, Parsers... ps) :ps_(std::tuple{ p1,ps... }) {}
+		constexpr join(std::tuple<P1, Parsers...> ps) : ps_(ps) {}
+
+		constexpr decltype(
+			join_impl<Src, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(std::declval<Src>()), std::declval<std::tuple<P1, Parsers...>>())
+			)parse(
+				Src&& src
+			)const {
+			return join_impl<Src, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(src), ps_);
+		}
+	};
 
 	template<class Src, template<class Target> class SkipJudge>
 	struct join<Src, SkipJudge> :public parser<Src, std::tuple<>, join<Src, SkipJudge>> {
