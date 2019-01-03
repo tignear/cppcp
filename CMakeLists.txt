@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) 
 
 
-project ("Parser2")
+project ("cppcp")
 # サブプロジェクトを含めます。
-add_subdirectory("Parser2")
-add_subdirectory("Parser2_test")
+add_subdirectory("cppcp")
+add_subdirectory("cppcp-test")

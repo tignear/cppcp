@@ -4,7 +4,7 @@
 #include <optional>
 #include <tuple>
 #include <variant>
-namespace tig::parser {
+namespace tig::cppcp {
 	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
 	template<class Target, class... Other>
@@ -88,28 +88,26 @@ namespace tig::parser {
 	};
 	template < class From, template<class...> class To >
 	using convart_wrapping_object_t = typename convart_wrapping_object<From, To>::type;
-	convart_wrapping_object_t<std::tuple<int>, std::variant> x = std::variant<int>(0);
+
 	template<class Src, class R>
 	class ret;
+
 	template<class Src, class R,class T>
 	struct parser {
-	private:
-	public:
 		using source_type = Src;
 		using result_type = R;
 		using self_type = T;
 		constexpr ret<Src,R> operator()(Src&& src)const {
 			return static_cast<const T&>(*this).parse(std::move(src));
 		}
-
 	};
+
 	template<class Ph, class... Pt>
 	struct parser_type_traits {
 		using source_type = typename std::remove_reference_t<Ph>::source_type;
 		using result_type = typename std::remove_reference_t<Ph>::result_type;
 		using self_type = typename std::remove_reference_t<Ph>::self_type;
 		constexpr static bool is_parser=std::is_base_of_v<parser<source_type, result_type, Ph>, Ph>;
-
 	};
 	template<class... T>
 	using result_type_t = typename parser_type_traits<T...>::result_type;
@@ -119,13 +117,12 @@ namespace tig::parser {
 	using self_type_t = typename parser_type_traits<T...>::self_type;
 
 
-
-
 	template<class Src, class Out>
 	struct parser_type {
 		template<class Fn>
 		using type = parser<Src, Out, Fn>;
 	};
+
 	template<class Src, class R,class Fn>
 	class parser_f:public parser<Src,R,parser_f<Src,R,Fn>> {
 		Fn f_;
@@ -138,19 +135,21 @@ namespace tig::parser {
 			return f_(std::move(src));
 		}
 	};
+
 	template<class Fn>
 	struct parser_builder{
 		template<class Src,class Out>
-		using to = parser_f<Src, Out, Fn>;
+		using To = parser_f<Src, Out, Fn>;
 		Fn f_;
 		constexpr parser_builder(Fn f):f_(f) {
 
 		}
 		template<class Src, class Out>
-		constexpr to<Src,Out> build() {
+		constexpr To<Src,Out> build() {
 			return parser_f<Src, Out, Fn>{f_};
 		}
 	};
+
 	template<class Src,class R>
 	class ret {	
 		Src itr_;
@@ -200,12 +199,10 @@ namespace tig::parser {
 		constexpr Src itr() & {
 			return itr_;
 		}
-		
 	}; 
+
 	template<class T>
-	inline constexpr std::optional<T> typing_nullopt() {
-		return std::nullopt;
-	}
+	constexpr std::optional<T> typing_nullopt = std::nullopt;
 
 	template<class T,class A>
 	inline constexpr std::function<std::pair<bool,A>(A,std::optional<T>)> exit_if_nullopt(std::function<A(A,T)> fn) {
@@ -216,7 +213,6 @@ namespace tig::parser {
 			else
 			{
 				return std::make_pair(false, a);
-
 			}
 		};
 	}
@@ -245,7 +241,7 @@ namespace tig::parser {
 		}
 		constexpr ret<Src, std::optional<typename std::iterator_traits<Src>::value_type>> parse(Src&& src)const {
 			if (src == end_) {
-				return ret{ src,typing_nullopt<typename std::iterator_traits<Src>::value_type>() };
+				return ret{ src,typing_nullopt<typename std::iterator_traits<Src>::value_type> };
 			}
 			return any<Src>()(std::move(src))
 				.map<std::optional<typename std::iterator_traits<Src>::value_type>>(
@@ -265,7 +261,7 @@ namespace tig::parser {
 				if (fn(e)) {
 					return std::make_optional<typename std::iterator_traits<Src>::value_type>(e);
 				}
-				return typing_nullopt<typename std::iterator_traits<Src>::value_type>();
+				return typing_nullopt<typename std::iterator_traits<Src>::value_type>;
 
 			});
 		};
@@ -518,7 +514,7 @@ namespace tig::parser {
 		join_c() = delete;
 		template <class... Parsers>
 		constexpr static auto join(Parsers... ps) {
-			return tig::parser::join<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>{ps...};
+			return cppcp::join<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>{ps...};
 		}
 	};
 	/*
@@ -603,7 +599,6 @@ namespace tig::parser {
 			static_assert(false,"parsers are one or more args required.");
 		}
 
-
 		constexpr ret<
 			typename parser_type_traits<Parsers...>::source_type,
 			typename std::common_type<result_type_t<Parsers>...>::type
@@ -625,8 +620,7 @@ namespace tig::parser {
 		F f_;
 		std::tuple<Parsers...> ps_;
 	public:
-		constexpr trys_variant(F f, Parsers... ps) :f_(f), ps_{ ps...}{
-		}
+		constexpr trys_variant(F f, Parsers... ps) :f_(f), ps_{ ps...}{}
 		constexpr ret<
 			source_type_t<Parsers...>,
 			convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>, std::variant>

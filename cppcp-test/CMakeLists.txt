@@ -9,10 +9,10 @@ download_project(PROJ googletest
 
 add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
-add_executable(TestParser2 "TestParser2.cpp")
+add_executable(CppCPtest "cppcp-test.cpp")
 
-target_link_libraries(TestParser2 gtest_main)
+target_link_libraries(CppCPtest gtest_main)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 include(GoogleTest)
-add_test(NAME TestParser2 COMMAND TestParser2)
+add_test(NAME CppCPtest COMMAND CppCPtest)
