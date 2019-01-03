@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "../cppcp/cppcp.h"
+#include "cppcp.h"
 #include <string>
 template <class Itr>
 
