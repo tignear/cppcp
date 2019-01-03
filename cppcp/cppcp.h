@@ -458,11 +458,11 @@ namespace tig::cppcp {
 		join() = delete;
 	};
 
-	template<class Src, template<class Target> class SkipJudge,class P1,class... Parsers>
-	class join<Src, SkipJudge, P1,Parsers...> :public parser<
-		Src,
+	template<template<class Target> class SkipJudge,class P1,class... Parsers>
+	class join<source_type_t<P1>, SkipJudge, P1,Parsers...> :public parser<
+		source_type_t<P1>,
 		typename join_result_type_supplier<SkipJudge,P1,Parsers...>::type,
-		join<Src , SkipJudge,P1,Parsers...>
+		join<source_type_t<P1>, SkipJudge,P1,Parsers...>
 	> {
 		std::tuple<P1,Parsers...> ps_;
 	public:
@@ -470,18 +470,18 @@ namespace tig::cppcp {
 		constexpr join(std::tuple<P1,Parsers...> ps) : ps_(ps) {}
 
 		constexpr decltype(
-			join_impl<Src, std::tuple<P1,std::remove_reference_t<Parsers>...>, SkipJudge, 0, 1+sizeof...(Parsers)>(std::move(std::declval<Src>()), std::declval<std::tuple<P1,Parsers...>>())
+			join_impl<source_type_t<P1>, std::tuple<P1,std::remove_reference_t<Parsers>...>, SkipJudge, 0, 1+sizeof...(Parsers)>(std::move(std::declval<source_type_t<P1>>()), std::declval<std::tuple<P1,Parsers...>>())
 		)parse(
-			Src&& src
+			source_type_t<P1>&& src
 		)const {
-			return join_impl<Src,std::tuple<P1, std::remove_reference_t<Parsers>...>, SkipJudge,0,1+sizeof...(Parsers)>(std::move(src),ps_);
+			return join_impl<source_type_t<P1>,std::tuple<P1, std::remove_reference_t<Parsers>...>, SkipJudge,0,1+sizeof...(Parsers)>(std::move(src),ps_);
 		}
 	};
-	template<class Src,  class P1, class... Parsers>
-	class join<Src, is_skip_tag, P1, Parsers...> :public parser<
-		Src,
+	template<  class P1, class... Parsers>
+	class join<source_type_t<P1>, is_skip_tag, P1, Parsers...> :public parser<
+		source_type_t<P1>,
 		typename join_result_type_supplier<is_skip_tag, P1, Parsers...>::type,
-		join<Src, is_skip_tag, P1, Parsers...>
+		join<source_type_t<P1>, is_skip_tag, P1, Parsers...>
 	> {
 		std::tuple<P1, Parsers...> ps_;
 	public:
@@ -489,11 +489,11 @@ namespace tig::cppcp {
 		constexpr join(std::tuple<P1, Parsers...> ps) : ps_(ps) {}
 
 		constexpr decltype(
-			join_impl<Src, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(std::declval<Src>()), std::declval<std::tuple<P1, Parsers...>>())
+			join_impl<source_type_t<P1>, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(std::declval<source_type_t<P1>>()), std::declval<std::tuple<P1, Parsers...>>())
 			)parse(
-				Src&& src
+				source_type_t<P1>&& src
 			)const {
-			return join_impl<Src, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(src), ps_);
+			return join_impl<source_type_t<P1>, std::tuple<P1, std::remove_reference_t<Parsers>...>, is_skip_tag, 0, 1 + sizeof...(Parsers)>(std::move(src), ps_);
 		}
 	};
 
@@ -653,4 +653,5 @@ namespace tig::cppcp {
 			>(std::move(src), f_, ps_);
 		}
 	};
+
 }
