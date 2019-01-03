@@ -307,7 +307,7 @@ namespace tig::cppcp {
 		auto f = [=](Src&& src) {
 			return ret<Src,RT>{src, rv};
 		};
-		return parser_f<Src, R, decltype(f)>{
+		return parser_f<Src, RT, decltype(f)>{
 			f
 		};
 	}
