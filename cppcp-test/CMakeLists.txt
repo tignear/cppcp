@@ -7,7 +7,7 @@ download_project(PROJ googletest
                 UPDATE_DISCONNECTED 1
 )
 
-#add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 
 add_executable(cppcpTest "cppcp-test.cpp")
 
