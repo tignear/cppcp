@@ -5,8 +5,165 @@
 #include <tuple>
 #include <variant>
 namespace tig::cppcp {
+
+
 	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+	enum class either_tag {
+		LEFT,
+		RIGHT,
+	};
+	template<class Left, class Right>
+	class either {
+
+		const union
+		{
+			Left left_;
+			Right right_;
+		};
+	public:
+		const either_tag tag_;
+
+		constexpr either(Left const& v, either_tag tag) : tag_(tag) {
+			switch (tag) {
+			case either_tag::LEFT:
+				left_ = v;
+				break;
+			case either_tag::RIGHT:
+				right_ = v;
+				break;
+			}
+		}
+		constexpr either(Right const& v, either_tag tag) : tag_(tag) {
+			switch (tag) {
+			case either_tag::LEFT:
+				left_ = v;
+				break;
+			case either_tag::RIGHT:
+				right_ = v;
+				break;
+			}
+		}
+		constexpr either(Left const& left) : tag_(either_tag::LEFT) {
+			left_ = left;
+		}
+
+		constexpr either(Right const& right) : tag_(either_tag::RIGHT) {
+			right_ = right;
+		}
+
+		~either() {
+			switch (t) {
+			case either_tag::LEFT:
+				left_.~Left();
+				break;
+			case either_tag::RIGHT:
+				right_.~Right();
+				break;
+			}
+		}
+
+		either(const either& r) : tag_(r.tag_) {
+			switch (tag_) {
+			case either_tag::LEFT:
+				left_ = r.left_;
+				break;
+			case either_tag::RIGHT:
+				right_ = r.right_;
+				break;
+			}
+		}
+		either(either&& r) : tag_(r.tag_) {
+			switch (tag_) {
+			case either_tag::LEFT:
+				left_ = std::move(r.left_);
+				break;
+			case either_tag::RIGHT:
+				right_ = std::move(r.right_);
+				break;
+			}
+		}
+		Left left()const {
+			if (either_tag::LEFT != tag_) {
+				throw "invalid get operation";
+			}
+			return left_;
+		}
+		Right right()const {
+			if (either_tag::RIGHT != tag_) {
+				throw "invalid get operation";
+			}
+			return right_;
+		}
+		std::common_type_t<Left, Right> value(){
+			switch (tag_) {
+			case either_tag::LEFT:
+				return left_;
+			case either_tag::RIGHT:
+				return right_;
+			}
+		}
+		either_tag tag()const {
+			return tag_;
+		}
+		bool isLeft()const {
+			return tag_ == either_tag::LEFT;
+		}
+		bool isRight()const {
+			return tag_ == either_tag::RIGHT;
+		}
+		template<class F>
+		void get(F f) {
+			switch (tag_)
+			{
+			case either_tag::LEFT:
+				f(left_);
+				break;
+			case either_tag::RIGHT:
+				f(right_);
+				break;
+			default:
+				break;
+			}
+		}
+	};
+
+	template <typename T>
+	struct left_value {
+		explicit left_value(T t) : t(t) {}
+
+		template <typename Left, typename Right>
+		operator either<Left, Right>() const {
+			return either<Left, Right>(t,either_tag::LEFT);
+		}
+
+	private:
+		T t;
+	};
+
+	template <typename T>
+	left_value<T> left(T t) {
+		return left_value<T>(t);
+	}
+	template <typename T>
+	struct right_value {
+		explicit right_value(T t) : t(t) {}
+
+		template <typename Left, typename Right>
+		operator either<Left, Right>() const {
+			return either<Left, Right>(t, either_tag::RIGHT);
+		}
+
+	private:
+		T t;
+	};
+
+	template <typename T>
+	right_value<T> right(T t) {
+		return right_value<T>(t);
+	}
+
 	template<class Target, class... Other>
 	struct is_same_any {
 
@@ -328,6 +485,16 @@ namespace tig::cppcp {
 			f
 		};
 	}
+	namespace accm {
+		template<class T>
+		std::pair<bool,T> contd(T t) {
+			return std::make_pair(true, t);
+		}
+		template<class T>
+		std::pair<bool, T> terminate(T t) {
+			return std::make_pair(false, t);
+		}
+	}
 	template<class P1,class P2,class Accumulator>
 	class fold:public parser<typename P1::source_type,typename P2::result_type,fold<P1,P2, Accumulator>> {
 		P1 p_;
@@ -336,7 +503,7 @@ namespace tig::cppcp {
 	public:
 		constexpr fold(
 			P1 p, P2/*std::function<R(void)>*/ init,
-			Accumulator/*std::function<std::pair<bool,R>(R&&,Value&&)>*/ accumulator
+			Accumulator/*std::function<either<R,R>>(R&&,Value&&)>*/ accumulator
 		):parser(*this),p_(p),init_(init),accumulator_(accumulator) {
 
 		}
@@ -361,7 +528,7 @@ namespace tig::cppcp {
 	template<class Src, class Value,class S,class Accumulator>
 	constexpr auto reduce(
 		S p,
-		Accumulator/*std::function<std::pair<bool, Value>(Value&&, Value&&)>*/ accumulator) {
+		Accumulator/*std::function<either<R,R>(Value&&, Value&&)>*/ accumulator) {
 		auto f= [=](Src&& src)
 		{
 			ret<Src,Value> r1 = p(std::move(src));

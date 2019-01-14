@@ -59,11 +59,11 @@ TEST(CppCP, fold)
 		 [](auto&& a, auto && v){
 		if (v)
 		{
-			return std::make_pair(true, a + v.value());
+			return tig::cppcp::accm::contd( a + v.value());
 		}
 		else
 		{
-			return std::make_pair(false, a);
+			return tig::cppcp::accm::terminate(a);
 		}
 	}
 	};
@@ -95,11 +95,11 @@ TEST(CppCP, reduce)
 		[](auto&& a,auto&& v) {
 			if (v)
 			{
-				return std::make_pair(true, std::make_optional(a.value() + v.value()));
+				return tig::cppcp::accm::contd(std::make_optional(a.value() + v.value()));
 			}
 			else
 			{
-				return std::make_pair(false, a);
+				return tig::cppcp::accm::terminate(a);
 			}
 		}
 		);
