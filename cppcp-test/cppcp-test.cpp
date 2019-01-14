@@ -16,10 +16,10 @@ TEST(CppCP, any )
 	EXPECT_EQ(tig::cppcp::any<sitr>()(std::move(r.itr())).get(), 'b');
 	
 }
-TEST(CppCP, satisfy)
+TEST(CppCP, filter)
 {
 	std::string target = "abcdef";
-	auto&& fn = tig::cppcp::satisfy<sitr>([](auto&& c) {return c == 'a'; });
+	auto&& fn = tig::cppcp::filter(tig::cppcp::any<sitr>(),[](auto&& c) {return c == 'a'; },std::optional<char>());
 	auto&& r = fn(cbegin(target));
 	EXPECT_EQ(r.get(), std::make_optional('a'));
 	auto&& r2 = fn(r.itr());

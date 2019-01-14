@@ -218,15 +218,15 @@ namespace tig::cppcp {
 	}
 
 	template<class Src>
-	constexpr auto any()
+	struct any:public parser<Src, typename std::iterator_traits<Src>::value_type,any<Src>>
 	{
-		auto f= [](Src&& itr) {
-			typename std::iterator_traits<Src>::value_type r = *itr;
-			++itr;
-			return ret<Src,typename std::iterator_traits<Src>::value_type>{ itr,r };
-		};
-		return parser_builder(f).build< Src, typename std::iterator_traits<Src>::value_type >();
-	}
+		
+		constexpr ret<Src, typename std::iterator_traits<Src>::value_type> parse(Src&& src)const {
+			auto&& v = *src;
+			src++;
+			return ret<Src, typename std::iterator_traits<Src>::value_type>{src, v};
+		}
+	};
 	template<class Src>
 	struct any_unless_end:public parser<Src, std::optional<typename std::iterator_traits<Src>::value_type>, any_unless_end<Src>>
 	{
@@ -251,22 +251,23 @@ namespace tig::cppcp {
 				);
 		}
 	};
-	template<class Src>
-	constexpr auto satisfy(
-		std::function<bool(const typename std::iterator_traits<Src>::reference)> fn
-	)
-	{
-		auto f= [=](Src&& itr) {
-			return any<Src>()(std::move(itr)).map<std::optional<typename std::iterator_traits<Src>::value_type>>([=](typename std::iterator_traits<Src>::value_type&& e) {
-				if (fn(e)) {
-					return std::make_optional<typename std::iterator_traits<Src>::value_type>(e);
-				}
-				return typing_nullopt<typename std::iterator_traits<Src>::value_type>;
+	
+	template<class P,class F,class Fail>
+	class filter:public parser<source_type_t<P>,std::optional<typename std::iterator_traits<source_type_t<P>>::value_type>, filter<P,F,Fail>>{
+		F f_;
+		P p_;
+		Fail fail_;
+	public:
+		constexpr filter(P p,F f,Fail fail=typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>):p_(p),f_(f),fail_(fail) {}
+		constexpr ret<source_type_t<P>,std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type,Fail>> parse(source_type_t<P>&& src)const {
+			auto&& x=p_(std::move(src));
+			if (f_(x.get())) {
+				return ret<source_type_t<P>, std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type, Fail>>(x.itr(),x.get() );
+			}
+			return ret<source_type_t<P>, std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type, Fail>>(src,fail_);
 
-			});
-		};
-		return parser_f<Src, std::optional<typename std::iterator_traits<Src>::value_type>,decltype(f)>{f };
-	}
+		}
+	};
 	template<class Src,class R,class RF>
 	constexpr auto supLazy(
 		RF supF
