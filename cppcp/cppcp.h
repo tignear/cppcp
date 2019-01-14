@@ -252,19 +252,35 @@ namespace tig::cppcp {
 		}
 	};
 	
-	template<class P,class F,class Fail>
-	class filter:public parser<source_type_t<P>,std::optional<typename std::iterator_traits<source_type_t<P>>::value_type>, filter<P,F,Fail>>{
+	template<class P, class F, class RT = std::optional<result_type_t<P>>>
+	class filter:public parser<source_type_t<P>, RT, filter<P,F, RT>>{
 		F f_;
 		P p_;
-		Fail fail_;
+		RT fail_;
 	public:
-		constexpr filter(P p,F f,Fail fail=typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>):p_(p),f_(f),fail_(fail) {}
-		constexpr ret<source_type_t<P>,std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type,Fail>> parse(source_type_t<P>&& src)const {
+		constexpr filter(P p,F f,RT fail =typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>):p_(p),f_(f),fail_(fail) {}
+		constexpr ret<source_type_t<P>, RT> parse(source_type_t<P>&& src)const {
 			auto&& x=p_(std::move(src));
 			if (f_(x.get())) {
-				return ret<source_type_t<P>, std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type, Fail>>(x.itr(),x.get() );
+				return ret<source_type_t<P>, RT>(x.itr(),x.get() );
 			}
-			return ret<source_type_t<P>, std::common_type_t<typename std::iterator_traits<source_type_t<P>>::value_type, Fail>>(src,fail_);
+			return ret<source_type_t<P>, RT>(src,fail_);
+
+		}
+	};
+	template<class P, class F, class RT = std::optional<result_type_t<P>>>
+	class reject :public parser<source_type_t<P>, RT, reject<P, F, RT>> {
+		F f_;
+		P p_;
+		RT fail_;
+	public:
+		constexpr reject(P p, F f, RT fail = typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>) :p_(p), f_(f), fail_(fail) {}
+		constexpr ret<source_type_t<P>, RT> parse(source_type_t<P>&& src)const {
+			auto&& x = p_(std::move(src));
+			if (!f_(x.get())) {
+				return ret<source_type_t<P>, RT>(x.itr(), x.get());
+			}
+			return ret<source_type_t<P>, RT>(src, fail_);
 
 		}
 	};
