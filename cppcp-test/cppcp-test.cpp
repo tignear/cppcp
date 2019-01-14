@@ -323,3 +323,13 @@ TEST(CppCP, trys_variant_all_false)
 	auto&& fn = trys_variant([](const auto& e) {return false; }, f, map(f, [](auto && e) {return std::to_string(e); }));
 	EXPECT_THROW(fn(cbegin(target)), std::invalid_argument);
 }
+TEST(CppCP, lazy)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = lazy([]() {return any<vitr<int>>(); });
+	auto &&r = fn(cbegin(target));
+	EXPECT_EQ(r.get(), -1);
+	EXPECT_EQ(r.itr(), std::next(cbegin(target), 1));
+}

@@ -667,5 +667,17 @@ namespace tig::cppcp {
 			>(std::move(src), f_, ps_);
 		}
 	};
-
+	template<class F>
+	class lazy :public parser<
+		source_type_t<std::invoke_result_t<F>>,
+		result_type_t<std::invoke_result_t<F>>,
+		lazy<F>
+	> {
+		F f_;
+	public:
+		constexpr lazy(F f) :f_(f) {}
+		constexpr auto parse(source_type_t<std::invoke_result_t<F>>&& src)const {
+			return f_()(std::move(src));
+		}
+	};
 }
