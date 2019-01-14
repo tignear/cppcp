@@ -417,7 +417,7 @@ namespace tig::cppcp {
 		P p_;
 		RT fail_;
 	public:
-		constexpr filter(P p,F f,RT fail =typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>):p_(p),f_(f),fail_(fail) {}
+		constexpr filter(P p,F f,RT fail =typing_nullopt<result_type_t<P>>):p_(p),f_(f),fail_(fail) {}
 		constexpr ret<source_type_t<P>, RT> parse(source_type_t<P>&& src)const {
 			auto&& x=p_(std::move(src));
 			if (f_(x.get())) {
@@ -433,7 +433,7 @@ namespace tig::cppcp {
 		P p_;
 		RT fail_;
 	public:
-		constexpr reject(P p, F f, RT fail = typing_nullopt<std::invoke_result_t<F, result_type_t<P>>>) :p_(p), f_(f), fail_(fail) {}
+		constexpr reject(P p, F f, RT fail = typing_nullopt<result_type_t<P>>) :p_(p), f_(f), fail_(fail) {}
 		constexpr ret<source_type_t<P>, RT> parse(source_type_t<P>&& src)const {
 			auto&& x = p_(std::move(src));
 			if (!f_(x.get())) {
