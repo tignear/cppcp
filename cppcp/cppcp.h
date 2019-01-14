@@ -264,15 +264,17 @@ namespace tig::cppcp {
 		using source_type = typename std::remove_reference_t<Ph>::source_type;
 		using result_type = typename std::remove_reference_t<Ph>::result_type;
 		using self_type = typename std::remove_reference_t<Ph>::self_type;
-		constexpr static bool is_parser=std::is_base_of_v<parser<source_type, result_type, Ph>, Ph>;
 	};
+
+
 	template<class... T>
 	using result_type_t = typename parser_type_traits<T...>::result_type;
 	template<class... T>
 	using source_type_t = typename parser_type_traits<T...>::source_type;
 	template<class... T>
 	using self_type_t = typename parser_type_traits<T...>::self_type;
-
+	template<class Ph, class... Pt>
+	constexpr static bool is_parser_v = std::is_base_of_v<parser<source_type_t<Ph>, result_type_t<Ph>, Ph>, Ph>;
 
 	template<class Src, class Out>
 	struct parser_type {
@@ -715,7 +717,7 @@ namespace tig::cppcp {
 		Parsers... p
 	)->join<typename parser_type_traits<Parsers...>::source_type,Parsers...>;
 
-	template<template<class Target> class SkipJudge,class... Parsers, std::enable_if_t<parser_type_traits<Parsers...>::is_parser, nullptr_t> =nullptr>
+	template<template<class Target> class SkipJudge,class... Parsers, std::enable_if_t<is_parser_v<Parsers...>, nullptr_t> =nullptr>
 	join_c_impl(
 		Parsers... p
 	)->join_c_impl<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>;
