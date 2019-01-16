@@ -64,7 +64,7 @@ namespace tig::cppcp {
 			}
 		}
 
-		either(const either& r) : tag_(r.tag_) {
+		constexpr either(const either& r) : tag_(r.tag_) {
 			switch (tag_) {
 			case either_tag::LEFT:
 				left_ = r.left_;
@@ -74,7 +74,7 @@ namespace tig::cppcp {
 				break;
 			}
 		}
-		either(either&& r) : tag_(r.tag_) {
+		constexpr either(either&& r) : tag_(r.tag_) {
 			switch (tag_) {
 			case either_tag::LEFT:
 				left_ = std::move(r.left_);
@@ -84,20 +84,20 @@ namespace tig::cppcp {
 				break;
 			}
 		}
-		Left left()const {
+		constexpr Left left()const {
 			if (either_tag::LEFT != tag_) {
 				throw "invalid get operation";
 			}
 			return left_;
 		}
-		Right right()const {
+		constexpr Right right()const {
 			if (either_tag::RIGHT != tag_) {
 				throw "invalid get operation";
 			}
 			return right_;
 		}
 		template<class T=typename std::common_type<Left, Right>::type>
-		T value()const{
+		constexpr T value()const{
 			switch (tag_) {
 			case either_tag::LEFT:
 				return left_;
@@ -105,17 +105,17 @@ namespace tig::cppcp {
 				return right_;
 			}
 		}
-		either_tag tag()const {
+		constexpr either_tag tag()const {
 			return tag_;
 		}
-		bool isLeft()const {
+		constexpr bool isLeft()const {
 			return tag_ == either_tag::LEFT;
 		}
-		bool isRight()const {
+		constexpr bool isRight()const {
 			return tag_ == either_tag::RIGHT;
 		}
 		template<class F>
-		void get(F f) {
+		constexpr void get(F f) {
 			switch (tag_)
 			{
 			case either_tag::LEFT:
@@ -132,10 +132,10 @@ namespace tig::cppcp {
 
 	template <typename T>
 	struct left_value {
-		explicit left_value(T t) : t(t) {}
+		constexpr explicit left_value(T t) : t(t) {}
 
 		template <typename Left, typename Right>
-		operator either<Left, Right>() const {
+		constexpr operator either<Left, Right>() const {
 			return either<Left, Right>(t,either_tag::LEFT);
 		}
 
@@ -144,15 +144,15 @@ namespace tig::cppcp {
 	};
 
 	template <typename T>
-	left_value<T> left(T t) {
+	constexpr left_value<T> left(T t) {
 		return left_value<T>(t);
 	}
 	template <typename T>
 	struct right_value {
-		explicit right_value(T t) : t(t) {}
+		constexpr explicit right_value(T t) : t(t) {}
 
 		template <typename Left, typename Right>
-		operator either<Left, Right>() const {
+		constexpr operator either<Left, Right>() const {
 			return either<Left, Right>(t, either_tag::RIGHT);
 		}
 
@@ -161,7 +161,7 @@ namespace tig::cppcp {
 	};
 
 	template <typename T>
-	right_value<T> right(T t) {
+	constexpr right_value<T> right(T t) {
 		return right_value<T>(t);
 	}
 
