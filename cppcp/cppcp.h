@@ -54,7 +54,7 @@ namespace tig::cppcp {
 		}
 
 		~either() {
-			switch (t) {
+			switch (tag_) {
 			case either_tag::LEFT:
 				left_.~Left();
 				break;
