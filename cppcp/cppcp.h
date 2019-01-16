@@ -24,7 +24,7 @@ namespace tig::cppcp {
 		};
 	public:
 		const either_tag tag_;
-
+		template<class T=std::enable_if_t<std::is_same_v<Left,Right>,nullptr_t>>
 		constexpr either(Left const& v, either_tag tag) : tag_(tag) {
 			switch (tag) {
 			case either_tag::LEFT:
@@ -35,6 +35,7 @@ namespace tig::cppcp {
 				break;
 			}
 		}
+		template<class T=std::enable_if_t<std::is_same_v<Left, Right>, nullptr_t >>
 		constexpr either(Right const& v, either_tag tag) : tag_(tag) {
 			switch (tag) {
 			case either_tag::LEFT:
