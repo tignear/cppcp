@@ -137,7 +137,12 @@ namespace tig::cppcp {
 
 		template <typename Left, typename Right>
 		constexpr operator either<Left, Right>() const {
-			return either<Left, Right>(t,either_tag::LEFT);
+			if constexpr (std::is_same_v<Left,Right>) {
+				return either<Left, Right>(t, either_tag::LEFT);
+			}
+			else {
+				return either<Left, Right>(t);
+			}
 		}
 
 	private:
@@ -154,7 +159,12 @@ namespace tig::cppcp {
 
 		template <typename Left, typename Right>
 		constexpr operator either<Left, Right>() const {
-			return either<Left, Right>(t, either_tag::RIGHT);
+			if constexpr (std::is_same_v<Left, Right>) {
+				return either<Left, Right>(t, either_tag::RIGHT);
+			}
+			else {
+				return either<Left, Right>(t);
+			}
 		}
 
 	private:
