@@ -96,7 +96,8 @@ namespace tig::cppcp {
 			}
 			return right_;
 		}
-		std::common_type_t<Left, Right> value(){
+		template<class T=typename std::common_type<Left, Right>::type>
+		T value()const{
 			switch (tag_) {
 			case either_tag::LEFT:
 				return left_;
@@ -375,42 +376,42 @@ namespace tig::cppcp {
 			}
 		};
 	}
+	namespace itr {
+		template<class Src>
+		struct any :public parser<Src, typename std::iterator_traits<Src>::value_type, any<Src>>
+		{
 
-	template<class Src>
-	struct any:public parser<Src, typename std::iterator_traits<Src>::value_type,any<Src>>
-	{
-		
-		constexpr ret<Src, typename std::iterator_traits<Src>::value_type> parse(Src&& src)const {
-			auto&& v = *src;
-			src++;
-			return ret<Src, typename std::iterator_traits<Src>::value_type>{src, v};
-		}
-	};
-	template<class Src>
-	struct any_unless_end:public parser<Src, std::optional<typename std::iterator_traits<Src>::value_type>, any_unless_end<Src>>
-	{
-	private:
-		Src end_;
-	public:
-		using source_type = Src;
-		using result_type = std::optional<typename std::iterator_traits<Src>::value_type>;
-		using self_type = any_unless_end<Src>;
-		constexpr any_unless_end(Src end):end_(end) {
-
-		}
-		constexpr ret<Src, std::optional<typename std::iterator_traits<Src>::value_type>> parse(Src&& src)const {
-			if (src == end_) {
-				return ret{ src,typing_nullopt<typename std::iterator_traits<Src>::value_type> };
+			constexpr ret<Src, typename std::iterator_traits<Src>::value_type> parse(Src&& src)const {
+				auto&& v = *src;
+				src++;
+				return ret<Src, typename std::iterator_traits<Src>::value_type>{src, v};
 			}
-			return any<Src>()(std::move(src))
-				.map<std::optional<typename std::iterator_traits<Src>::value_type>>(
-					[](auto&& e) {
-						return std::make_optional(e);
-					}
+		};
+		template<class Src>
+		struct any_unless_end :public parser<Src, std::optional<typename std::iterator_traits<Src>::value_type>, any_unless_end<Src>>
+		{
+		private:
+			Src end_;
+		public:
+			using source_type = Src;
+			using result_type = std::optional<typename std::iterator_traits<Src>::value_type>;
+			using self_type = any_unless_end<Src>;
+			constexpr any_unless_end(Src end) :end_(end) {
+
+			}
+			constexpr ret<Src, std::optional<typename std::iterator_traits<Src>::value_type>> parse(Src&& src)const {
+				if (src == end_) {
+					return ret{ src,typing_nullopt<typename std::iterator_traits<Src>::value_type> };
+				}
+				return any<Src>()(std::move(src))
+					.map<std::optional<typename std::iterator_traits<Src>::value_type>>(
+						[](auto&& e) {
+					return std::make_optional(e);
+				}
 				);
-		}
-	};
-	
+			}
+		};
+	}
 	template<class P, class F, class RT = std::optional<result_type_t<P>>>
 	class filter:public parser<source_type_t<P>, RT, filter<P,F, RT>>{
 		F f_;
@@ -489,11 +490,11 @@ namespace tig::cppcp {
 	}
 	namespace accm {
 		template<class T>
-		std::pair<bool,T> contd(T t) {
+		constexpr std::pair<bool,T> contd(T t) {
 			return std::make_pair(true, t);
 		}
 		template<class T>
-		std::pair<bool, T> terminate(T t) {
+		constexpr std::pair<bool, T> terminate(T t) {
 			return std::make_pair(false, t);
 		}
 	}
