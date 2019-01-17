@@ -322,7 +322,12 @@ namespace tig::cppcp {
 			return parser_f<Src, Out, Fn>{f_};
 		}
 	};
+	class parser_exception:public std::exception {
+		
+	};
+	class eof_exception :public parser_exception {
 
+	};
 	template<class Src,class R>
 	class ret {	
 		Src itr_;
@@ -331,14 +336,14 @@ namespace tig::cppcp {
 		using value_type = R;
 		using source_type = Src;
 
-		ret(Src itr, R ret) :itr_(itr), ret_(ret) {}
-		R&& get()&& {
+		constexpr ret(Src itr, R ret) :itr_(itr), ret_(ret) {}
+		constexpr R&& get()&& {
 			return std::move(ret_);
 		}
-		R& get() & {
+		constexpr R& get() & {
 			return ret_;
 		}
-		R* operator->() {
+		constexpr R* operator->() {
 			return &ret;
 		}
 		template<class NR>
@@ -405,23 +410,18 @@ namespace tig::cppcp {
 		{
 		private:
 			Src end_;
+			any<Src> p_{};
 		public:
-			using source_type = Src;
-			using result_type = std::optional<typename std::iterator_traits<Src>::value_type>;
-			using self_type = any_unless_end<Src>;
 			constexpr any_unless_end(Src end) :end_(end) {
 
 			}
-			constexpr ret<Src, std::optional<typename std::iterator_traits<Src>::value_type>> parse(Src&& src)const {
+			constexpr ret<Src,typename parser::result_type> parse(Src&& src)const {
 				if (src == end_) {
-					return ret{ src,typing_nullopt<typename std::iterator_traits<Src>::value_type> };
+					return ret{ src,std::optional<typename std::iterator_traits<Src>::value_type>() };
 				}
-				return any<Src>()(std::move(src))
-					.map<std::optional<typename std::iterator_traits<Src>::value_type>>(
-						[](auto&& e) {
-					return std::make_optional(e);
-				}
-				);
+				auto&& r = p_(std::move(src));
+				return ret{r.itr(), std::optional<typename std::iterator_traits<Src>::value_type>(r.get()) };
+				
 			}
 		};
 	}
@@ -792,6 +792,9 @@ namespace tig::cppcp {
 			return ret<Src, skip_tag>{p(std::move(src)).itr(), skip_tag{}};
 		} }.build<Src, skip_tag>();
 	}
+	class all_of_parser_failed_exception:public parser_exception {
+
+	};
 	template<class P, class F>
 	class map:public parser<typename parser_type_traits<P>::source_type,std::invoke_result_t<F,result_type_t<P>>,map<P,F>> {
 		P p_;
@@ -804,15 +807,20 @@ namespace tig::cppcp {
 	};
 	template<class Src, class F, class R, class Tuple, size_t index, size_t size>
 	constexpr R trys_impl(Src&&, F,Tuple, std::enable_if_t<index == size>* = 0) {
-		throw std::invalid_argument("");
+		throw all_of_parser_failed_exception();
 	}
 
 	template<class Src,class F,class R,class Tuple,size_t index,size_t size>
 	constexpr R trys_impl(Src&& src,F f,Tuple tuple,std::enable_if_t<index!=size>* =0) {
 		auto m = src;
-		auto r = std::get<index>(tuple)(std::move(src));
-		if (f(r.get())) {
-			return { r.itr(),r.get() };
+		try {
+			auto r = std::get<index>(tuple)(std::move(src));
+			if (f(r.get())) {
+				return { r.itr(),r.get() };
+			}
+		}
+		catch(const parser_exception&){
+			//next
 		}
 		return trys_impl<Src, F, R,Tuple,index+1,size>(std::move(m),f,tuple);
 	}
@@ -843,6 +851,7 @@ namespace tig::cppcp {
 				);
 		}
 	};
+
 	template<class F,class... Parsers>
 	class trys_variant:public parser<
 		typename parser_type_traits<Parsers...>::source_type,
@@ -878,6 +887,17 @@ namespace tig::cppcp {
 		constexpr lazy(F f) :f_(f) {}
 		constexpr auto parse(source_type_t<std::invoke_result_t<F>>&& src)const {
 			return f_()(std::move(src));
+		}
+	};
+	template<class Src,class R>
+	class throwing :public parser<Src, R, throwing<Src, R>> {
+		parser_exception ex_;
+	public:
+		constexpr throwing(parser_exception ex):ex_(ex) {
+
+		}
+		constexpr auto parse(Src&& src)const {
+			throw ex_;
 		}
 	};
 }

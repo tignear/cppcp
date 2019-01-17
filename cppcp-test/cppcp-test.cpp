@@ -287,7 +287,7 @@ TEST(CppCP, trys_all_false)
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
 	auto f = itr::any<vitr<int>>();
 	auto&& fn = trys([](const auto& e) {return false; }, f, map(f, [](auto && e) {return e + 1; }));
-	EXPECT_THROW(fn(cbegin(target)),std::invalid_argument);
+	EXPECT_THROW(fn(cbegin(target)), tig::cppcp::all_of_parser_failed_exception);
 }
 TEST(CppCP, trys_variant_true)
 {
@@ -321,7 +321,7 @@ TEST(CppCP, trys_variant_all_false)
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
 	auto f = itr::any<vitr<int>>();
 	auto&& fn = trys_variant([](const auto& e) {return false; }, f, map(f, [](auto && e) {return std::to_string(e); }));
-	EXPECT_THROW(fn(cbegin(target)), std::invalid_argument);
+	EXPECT_THROW(fn(cbegin(target)), tig::cppcp::all_of_parser_failed_exception);
 }
 TEST(CppCP, lazy)
 {
