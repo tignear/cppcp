@@ -381,11 +381,11 @@ namespace tig::cppcp {
 	inline constexpr std::function<std::pair<bool,A>(A,std::optional<T>)> exit_if_nullopt(std::function<A(A,T)> fn) {
 		return [=](auto&& a,auto&& e) {
 			if (e) {
-				return std::make_pair(true, fn(a,e.value()));
+				return cppcp::accm::contd(fn(a,e.value()));
 			}
 			else
 			{
-				return std::make_pair(false, a);
+				return cppcp::accm::terminate(a);
 			}
 		};
 	}
@@ -504,11 +504,11 @@ namespace tig::cppcp {
 	namespace accm {
 		template<class T>
 		constexpr std::pair<bool,T> contd(T t) {
-			return std::make_pair(true, t);
+			return std::make_pair(false, t);
 		}
 		template<class T>
 		constexpr std::pair<bool, T> terminate(T t) {
-			return std::make_pair(false, t);
+			return std::make_pair(true, t);
 		}
 	}
 	template<class P1,class P2,class Accumulator>
@@ -532,7 +532,7 @@ namespace tig::cppcp {
 				itr = r.itr();
 				auto&& ar = accumulator_(std::move(current), std::move(r.get()));
 				current = std::move(ar.second);
-				if (!ar.first) {
+				if (ar.first) {
 					break;
 				}
 			} while (true);
@@ -555,7 +555,7 @@ namespace tig::cppcp {
 				itr = r.itr();
 				auto&& ar = accumulator(std::move(current), std::move(r.get()));
 				current = std::move(ar.second);
-				if (!ar.first) {
+				if (ar.first) {
 					break;
 				}
 
