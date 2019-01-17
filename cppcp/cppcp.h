@@ -900,4 +900,34 @@ namespace tig::cppcp {
 			throw ex_;
 		}
 	};
+	template<class P,class E,class F>
+	class catching_impl :public parser<source_type_t<P>, result_type_t<P>, catching_impl<P, E,F>> {
+		P p_;
+		F f_;
+	public:
+		constexpr catching_impl(P p,F f):p_(p),f_(f) {
+
+		}
+		constexpr ret<source_type_t<P>, result_type_t<P>> parse(source_type_t<P>&& src)const {
+			try {
+				return p_(std::move(src));
+			}
+			catch (E ex) {
+				return f_(ex);
+			}
+		}
+	};
+	template<class P, class F>
+	class catching  {
+		P p_;
+		F f_;
+	public:
+		constexpr catching(P p, F f) :p_(p), f_(f) {
+
+		}
+		template<class E>
+		constexpr operator catching_impl<P,E,F>() {
+			return catching_impl<P, E, F>(p_,f_);
+		}
+	};
 }
