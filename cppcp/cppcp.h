@@ -926,7 +926,7 @@ namespace tig::cppcp {
 
 		}
 		template<class E>
-		constexpr operator catching_impl<P,E,F>() {
+		constexpr catching_impl<P,E,F> build() {
 			return catching_impl<P, E, F>(p_,f_);
 		}
 	};
