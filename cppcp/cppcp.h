@@ -896,7 +896,7 @@ namespace tig::cppcp {
 		constexpr throwing(parser_exception ex):ex_(ex) {
 
 		}
-		constexpr R parse(Src&& src)const {
+		constexpr ret<Src,R> parse(Src&& src)const {
 			throw ex_;
 		}
 	};
