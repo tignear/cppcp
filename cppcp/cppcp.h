@@ -263,8 +263,12 @@ namespace tig::cppcp {
 	template<class Src, class R>
 	class ret;
 
+
 	template<class Src, class R,class T>
 	struct parser {
+	protected:
+		constexpr parser() = default;
+	public:
 		using source_type = Src;
 		using result_type = R;
 		using self_type = T;
@@ -931,4 +935,17 @@ namespace tig::cppcp {
 			return catching_impl<P, E, F>(p_,f_);
 		}
 	};
+	template<class Src,class R>
+	class type_eraser :public parser<Src, R, type_eraser<Src,R> > {
+		std::function<ret<Src, R>(Src&&)>p_;
+	public:
+		template<class P>
+		constexpr type_eraser(P p) :p_(p) {
+			
+		}
+		constexpr ret<Src,R> parse(Src&& src)const {
+			return p_(std::move(src));
+		}
+	};
+
 }

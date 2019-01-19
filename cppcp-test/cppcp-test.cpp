@@ -351,3 +351,11 @@ TEST(CppCP, catching)
 	}).build<parser_exception>();
 	EXPECT_EQ(fn2(cbegin(target)).get(), 0);
 }
+TEST(CppCP, type_eraser)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = type_eraser<vitr<int>, int>(throwing<vitr<int>, int>(parser_exception()));
+	EXPECT_THROW(fn(cbegin(target)), tig::cppcp::parser_exception);
+}
