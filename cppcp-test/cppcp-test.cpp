@@ -333,3 +333,21 @@ TEST(CppCP, lazy)
 	EXPECT_EQ(r.get(), -1);
 	EXPECT_EQ(r.itr(), std::next(cbegin(target), 1));
 }
+TEST(CppCP, throwing)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = throwing<vitr<int>,int>(parser_exception());
+	EXPECT_THROW(fn(cbegin(target)), tig::cppcp::parser_exception);
+}
+TEST(CppCP, catching)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn2 = catching(throwing<vitr<int>, int>(parser_exception()), [](const auto& e) {
+		return 0;
+	}).build<parser_exception>();
+	EXPECT_EQ(fn2(cbegin(target)).get(), 0);
+}

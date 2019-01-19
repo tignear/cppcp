@@ -909,11 +909,12 @@ namespace tig::cppcp {
 
 		}
 		constexpr ret<source_type_t<P>, result_type_t<P>> parse(source_type_t<P>&& src)const {
+			auto m = src;
 			try {
 				return p_(std::move(src));
 			}
 			catch (E ex) {
-				return f_(ex);
+				return ret{m, f_(ex) };
 			}
 		}
 	};
