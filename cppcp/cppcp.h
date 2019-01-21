@@ -947,5 +947,34 @@ namespace tig::cppcp {
 			return p_(std::move(src));
 		}
 	};
+	
+	template<class P,class R,class F>
+	class many :public parser<source_type_t<P>, result_type_t<R>, many<P, R,F> > {
+		P p_;
+		F f_;
+		const R init_;
+	public:
+		constexpr many(P p,R init,F updateFn) :p_(p),f_(updateFn),init_(init) {
+
+		}
+		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+			auto s = src;
+			auto ri=init_(std::move(s));
+			s = ri.itr();
+			result_type_t<R> rv = ri.get();
+			while (true) {
+				auto r = p_(std::move(s));
+				s = r.itr();
+				auto rp = r.get();
+				std::pair<bool,result_type_t<R>> uv=f_(std::move(rv), rp);
+				if (uv.first) {
+					return { s,uv.second };
+				}
+				else {
+					rv = uv.second;
+				}
+			}
+		}
+	};
 
 }

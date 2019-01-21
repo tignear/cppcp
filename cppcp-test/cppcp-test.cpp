@@ -359,3 +359,19 @@ TEST(CppCP, type_eraser)
 	auto&& fn = type_eraser<vitr<int>, int>(throwing<vitr<int>, int>(parser_exception()));
 	EXPECT_THROW(fn(cbegin(target)), tig::cppcp::parser_exception);
 }
+TEST(CppCP, many)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = many(itr::any<vitr<int>>(), sup<vitr<int>>(std::vector<int>()), [](auto&& list, auto v) {
+		list.push_back(v);
+		if (list.size() >= 4) {
+			return accm::terminate(std::move(list));
+		}
+		return accm::contd(std::move(list));
+	});
+	auto expect = std::vector<int>{ -1, 0, 1, 2 };
+	EXPECT_EQ(fn(cbegin(target)).get(), expect);
+
+}
