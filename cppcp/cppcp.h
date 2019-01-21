@@ -905,11 +905,11 @@ namespace tig::cppcp {
 		}
 	};
 	template<class P,class E,class F>
-	class catching_impl :public parser<source_type_t<P>, result_type_t<P>, catching_impl<P, E,F>> {
+	class catching :public parser<source_type_t<P>, result_type_t<P>, catching<P, E,F>> {
 		P p_;
 		F f_;
 	public:
-		constexpr catching_impl(P p,F f):p_(p),f_(f) {
+		constexpr catching(P p,F f):p_(p),f_(f) {
 
 		}
 		constexpr ret<source_type_t<P>, result_type_t<P>> parse(source_type_t<P>&& src)const {
@@ -922,19 +922,11 @@ namespace tig::cppcp {
 			}
 		}
 	};
-	template<class P, class F>
-	class catching  {
-		P p_;
-		F f_;
-	public:
-		constexpr catching(P p, F f) :p_(p), f_(f) {
 
-		}
-		template<class E>
-		constexpr catching_impl<P,E,F> build() {
-			return catching_impl<P, E, F>(p_,f_);
-		}
-	};
+	template<class E,class P, class F>
+	constexpr auto make_catching(P p, F f) {
+		return catching<P, E, F>(p,f);
+	}
 	template<class Src,class R>
 	class type_eraser :public parser<Src, R, type_eraser<Src,R> > {
 		std::function<ret<Src, R>(Src&&)>p_;

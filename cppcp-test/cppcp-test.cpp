@@ -346,9 +346,9 @@ TEST(CppCP, catching)
 	using namespace std::literals::string_literals;
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
-	auto&& fn2 = catching(throwing<vitr<int>, int>(parser_exception()), [](const auto& e) {
+	auto&& fn2 = make_catching<parser_exception>(throwing<vitr<int>, int>(parser_exception()), [](const auto& e) {
 		return 0;
-	}).build<parser_exception>();
+	});
 	EXPECT_EQ(fn2(cbegin(target)).get(), 0);
 }
 TEST(CppCP, type_eraser)
