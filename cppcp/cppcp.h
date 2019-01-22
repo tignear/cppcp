@@ -339,7 +339,7 @@ namespace tig::cppcp {
 		uncaught_parser_exception(E ex):ex_(ex) {
 
 		}
-		E get_reason_exception() {
+		E get_reason_exception()const {
 			return ex_;
 		}
 	};
@@ -989,31 +989,61 @@ namespace tig::cppcp {
 		}
 	};
 	template<class P,class S>
-	constexpr auto to_uncauting_impl(P p,S&& s) {
+	constexpr auto to_uncatching_impl(P p,S&& s) {
 		return p(std::move(s));
 	}
 	template<class P,class S,class Eh,class... Et>
-	constexpr auto to_uncauting_impl(P p,S&& s) {
+	constexpr auto to_uncatching_impl(P p,S&& s) {
 		try {
-			return to_uncauting_impl<P, Et...>(p, std::move(s));
+			return to_uncatching_impl<P, Et...>(p, std::move(s));
 		}
 		catch (const Eh& ex) {
 			throw uncaught_parser_exception<Eh>(ex);
 		}
 	}
 	template<class P,class... Es>
-	class to_uncauting:public parser<source_type_t<P>,result_type_t<P>,to_uncauting<P,Es...>> {
+	class to_uncatching :public parser<source_type_t<P>,result_type_t<P>, to_uncatching<P,Es...>> {
 		P p_;
 	public:
-		constexpr to_uncauting(P p):p_(p) {
+		constexpr to_uncatching(P p):p_(p) {
 
 		}
 		constexpr auto parse(source_type_t<P>&& src)const{
-			return to_uncauting_impl<P, source_type_t<P>, Es...>(p_,std::move(src));
+			return to_uncatching_impl<P, source_type_t<P>, Es...>(p_,std::move(src));
 		}
 	};
 	template<class... Es, class P>
-	constexpr auto make_to_uncauting(P p) {
-		return to_uncauting<P, Es...>(p);
+	constexpr auto make_to_uncatching(P p) {
+		return to_uncatching<P, Es...>(p);
+	}
+	
+
+	template<class P, class S>
+	constexpr auto to_catching_impl(P p, S&& s) {
+		return p(std::move(s));
+	}
+	template<class P, class S, class Eh, class... Et>
+	constexpr auto to_catching_impl(P p, S&& s) {
+		try {
+			return to_catching_impl<P, Et...>(p, std::move(s));
+		}
+		catch (const uncaught_parser_exception<Eh>& ex) {
+			throw ex.get_reason_exception();
+		}
+	}
+	template<class P, class... Es>
+	class to_catching :public parser<source_type_t<P>, result_type_t<P>, to_catching<P, Es...>> {
+		P p_;
+	public:
+		constexpr to_catching(P p) :p_(p) {
+
+		}
+		constexpr auto parse(source_type_t<P>&& src)const {
+			return to_catching_impl<P, source_type_t<P>, Es...>(p_, std::move(src));
+		}
+	};
+	template<class... Es, class P>
+	constexpr auto make_to_catching(P p) {
+		return to_catching<P, Es...>(p);
 	}
 }
