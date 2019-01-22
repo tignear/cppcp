@@ -375,3 +375,12 @@ TEST(CppCP, many)
 	EXPECT_EQ(fn(cbegin(target)).get(), expect);
 
 }
+TEST(CppCP, uncauting)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = make_to_uncauting<parser_exception>(throwing<vitr<int>, int>(parser_exception()));
+	EXPECT_THROW(fn(cbegin(target)).get(), tig::cppcp::uncaught_parser_exception<parser_exception>);
+
+}

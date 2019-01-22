@@ -326,8 +326,22 @@ namespace tig::cppcp {
 			return parser_f<Src, Out, Fn>{f_};
 		}
 	};
-	class parser_exception:public std::exception {
+	class parser_exception_base:public std::exception {
+
+	};
+	class parser_exception:public parser_exception_base {
 		
+	};
+	template<class E>
+	class uncaught_parser_exception :public parser_exception_base {
+		E ex_;
+	public:
+		uncaught_parser_exception(E ex):ex_(ex) {
+
+		}
+		E get_reason_exception() {
+			return ex_;
+		}
 	};
 	class eof_exception :public parser_exception {
 
@@ -923,6 +937,7 @@ namespace tig::cppcp {
 		}
 	};
 
+
 	template<class E,class P, class F>
 	constexpr auto make_catching(P p, F f) {
 		return catching<P, E, F>(p,f);
@@ -954,19 +969,51 @@ namespace tig::cppcp {
 			auto ri=init_(std::move(s));
 			s = ri.itr();
 			result_type_t<R> rv = ri.get();
-			while (true) {
-				auto r = p_(std::move(s));
-				s = r.itr();
-				auto rp = r.get();
-				std::pair<bool,result_type_t<R>> uv=f_(std::move(rv), rp);
-				if (uv.first) {
-					return { s,uv.second };
+			try {
+				while (true) {
+					auto r = p_(std::move(s));
+					s = r.itr();
+					auto rp = r.get();
+					std::pair<bool, result_type_t<R>> uv = f_(std::move(rv), rp);
+					if (uv.first) {
+						return { s,uv.second };
+					}
+					else {
+						rv = uv.second;
+					}
 				}
-				else {
-					rv = uv.second;
-				}
+			}
+			catch (parser_exception) {
+				return { s,rv };
 			}
 		}
 	};
+	template<class P,class S>
+	constexpr auto to_uncauting_impl(P p,S&& s) {
+		return p(std::move(s));
+	}
+	template<class P,class S,class Eh,class... Et>
+	constexpr auto to_uncauting_impl(P p,S&& s) {
+		try {
+			return to_uncauting_impl<P, Et...>(p, std::move(s));
+		}
+		catch (const Eh& ex) {
+			throw uncaught_parser_exception<Eh>(ex);
+		}
+	}
+	template<class P,class... Es>
+	class to_uncauting:public parser<source_type_t<P>,result_type_t<P>,to_uncauting<P,Es...>> {
+		P p_;
+	public:
+		constexpr to_uncauting(P p):p_(p) {
 
+		}
+		constexpr auto parse(source_type_t<P>&& src)const{
+			return to_uncauting_impl<P, source_type_t<P>, Es...>(p_,std::move(src));
+		}
+	};
+	template<class... Es, class P>
+	constexpr auto make_to_uncauting(P p) {
+		return to_uncauting<P, Es...>(p);
+	}
 }
