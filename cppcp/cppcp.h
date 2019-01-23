@@ -770,22 +770,22 @@ namespace tig::cppcp {
 	/*
 	custom join end
 	*/
-	template<class Src,class V,class Fn>
-	constexpr auto skip(parser<Src, V,Fn> p) {
-		return parser_builder{ [=](Src&& src) {
-			return ret<Src, skip_tag> { p(std::move(src)).itr(), skip_tag{} };
-		} }.build<Src, skip_tag>();
+	template<class P>
+	constexpr auto skip(P p) {
+		return parser_builder{ [=](source_type_t<P>&& src) {
+			return ret<source_type_t<P>, skip_tag> { p(std::move(src)).itr(), skip_tag{} };
+		} }.build<source_type_t<P>, skip_tag>();
 	}
-	template<class Src,class V,class Fn>
-	constexpr auto skipN(parser<Src, V,Fn> p,typename std::iterator_traits<Src>::difference_type n) {
-		return parser_builder{ [=](Src&& src) {
+	template<class P>
+	constexpr auto skipN(P p,typename std::iterator_traits<source_type_t<P>>::difference_type n) {
+		return parser_builder{ [=](source_type_t<P>&& src) {
 			auto&& itr = src;
 			for (auto i = 0; i < n; ++i)
 			{
 				itr = p(std::move(itr)).itr();
 			}
-			return ret<Src, skip_tag>{itr, skip_tag{}};
-		} }.build<Src, skip_tag>();
+			return ret<source_type_t<P>, skip_tag>{itr, skip_tag{}};
+		} }.build<source_type_t<P>, skip_tag>();
 	}
 	template<class Src>
 	constexpr typename auto skipN(typename std::iterator_traits<Src>::difference_type n) {
