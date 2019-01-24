@@ -5,7 +5,8 @@
 #include <tuple>
 #include <variant>
 namespace tig::cppcp {
-
+	constexpr auto always_true = [](const auto&) {return true; };
+	constexpr auto always_false = [](const auto&) {return false; };
 
 	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
@@ -263,9 +264,11 @@ namespace tig::cppcp {
 	template<class Src, class R>
 	class ret;
 
+	struct parser_base {
 
+	};
 	template<class Src, class R,class T>
-	struct parser {
+	struct parser :public parser_base{
 	protected:
 		constexpr parser() = default;
 	public:
@@ -292,7 +295,7 @@ namespace tig::cppcp {
 	template<class... T>
 	using self_type_t = typename parser_type_traits<T...>::self_type;
 	template<class Ph, class... Pt>
-	constexpr static bool is_parser_v = std::is_base_of_v<parser<source_type_t<Ph>, result_type_t<Ph>, Ph>, Ph>;
+	constexpr static bool is_parser_v = std::is_base_of_v<parser_base,Ph>;
 
 	template<class Src, class Out>
 	struct parser_type {
@@ -810,9 +813,7 @@ namespace tig::cppcp {
 			return ret<Src, skip_tag>{p(std::move(src)).itr(), skip_tag{}};
 		} }.build<Src, skip_tag>();
 	}
-	class all_of_parser_failed_exception:public parser_exception {
 
-	};
 	template<class P, class F>
 	class map:public parser<typename parser_type_traits<P>::source_type,std::invoke_result_t<F,result_type_t<P>>,map<P,F>> {
 		P p_;
@@ -822,6 +823,12 @@ namespace tig::cppcp {
 		constexpr auto parse(source_type_t<P>&& src)const {
 			return p_(std::move(src)).map<std::invoke_result_t<F, result_type_t<P>>>(mapping_);
 		}
+	};
+	/*
+	* trys start
+	*/
+	class all_of_parser_failed_exception :public parser_exception {
+
 	};
 	template<class Src, class F, class R, class Tuple, size_t index, size_t size>
 	constexpr R trys_impl(Src&&, F,Tuple, std::enable_if_t<index == size>* = 0) {
@@ -844,18 +851,21 @@ namespace tig::cppcp {
 	}
 
 	template<class F, class... Parsers>
-	class trys:public parser<
+	class trys_internal :public parser<
 		typename parser_type_traits<Parsers...>::source_type,
 		typename std::common_type<result_type_t<Parsers>...>::type,
-		trys<F,Parsers...>
+		trys_internal<F,Parsers...>
 	> {
 		F f_;
 		std::tuple<Parsers...> parsers_;
 	public:
-		constexpr trys(F f, Parsers... parsers) :f_(f), parsers_{ parsers... } {}
-		constexpr trys(F f) : f_(f), parsers{} {
+		constexpr trys_internal(F f, Parsers... parsers) :f_(f), parsers_{ parsers... } {}
+
+
+		constexpr trys_internal(F f) : f_(f), parsers{} {
 			static_assert(false,"parsers are one or more args required.");
 		}
+		//constexpr trys(Parsers... parsers, std::enable_if_t<is_parser_v<Parsers>>* = nullptr) : f_(always_true), parsers_{ parsers... } {}
 
 		constexpr ret<
 			typename parser_type_traits<Parsers...>::source_type,
@@ -869,17 +879,39 @@ namespace tig::cppcp {
 				);
 		}
 	};
+	template<class H,class... Parsers>
+	class trys :public parser <
+		source_type_t<std::conditional_t<is_parser_v<H>, trys_internal<decltype(always_true), H, Parsers...>, trys_internal<H, Parsers...>>>,
+		result_type_t<std::conditional_t<is_parser_v<H>, trys_internal<decltype(always_true), H, Parsers...>, trys_internal<H, Parsers...>>>,
+		trys<H, Parsers...>
+	> {
+		using T = std::conditional_t<is_parser_v<H>, trys_internal<decltype(always_true), H, Parsers...>, trys_internal<H, Parsers...>>;
+		T internal_;
+	public:
+		template<class X = H, std::enable_if_t<is_parser_v<X>, nullptr_t> = nullptr>
+		constexpr trys(X h,Parsers... parsers ):internal_{ always_true, h, parsers... } {
+		}
+		template<class X=H,std::enable_if_t<!is_parser_v<X>, nullptr_t> = nullptr>
+		constexpr trys(X h, Parsers... parsers) :internal_{  h, parsers... } {
+		}
+		constexpr auto parse(source_type_t<T>&& src)const {
+			return internal_(std::move(src));
+		}
+	};
+	template<class H , class... Parsers>
+	trys(H h, Parsers... ps)->trys<H, Parsers...>;
+
 
 	template<class F,class... Parsers>
-	class trys_variant:public parser<
+	class trys_variant_internal:public parser<
 		typename parser_type_traits<Parsers...>::source_type,
 		convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>, std::variant>,
-		trys_variant<F,Parsers...>
+		trys_variant_internal<F,Parsers...>
 	> {
 		F f_;
 		std::tuple<Parsers...> ps_;
 	public:
-		constexpr trys_variant(F f, Parsers... ps) :f_(f), ps_{ ps...}{}
+		constexpr trys_variant_internal(F f, Parsers... ps) :f_(f), ps_{ ps...}{}
 		constexpr ret<
 			source_type_t<Parsers...>,
 			convart_wrapping_object_t<unique_type_t<result_type_t<Parsers>...>, std::variant>
@@ -894,6 +926,31 @@ namespace tig::cppcp {
 			>(std::move(src), f_, ps_);
 		}
 	};
+	template<class H, class... Parsers>
+	class trys_variant :public parser <
+		source_type_t<std::conditional_t<is_parser_v<H>, trys_variant_internal<decltype(always_true), H, Parsers...>, trys_variant_internal<H, Parsers...>>>,
+		result_type_t<std::conditional_t<is_parser_v<H>, trys_variant_internal<decltype(always_true), H, Parsers...>, trys_variant_internal<H, Parsers...>>>,
+		trys_variant<H, Parsers...>
+	> {
+		using T = std::conditional_t<is_parser_v<H>, trys_variant_internal<decltype(always_true), H, Parsers...>, trys_variant_internal<H, Parsers...>>;
+		T internal_;
+	public:
+		template<class X = H, std::enable_if_t<is_parser_v<X>, nullptr_t> = nullptr>
+		constexpr trys_variant(X h, Parsers... parsers) :internal_{ always_true, h, parsers... } {
+		}
+		template<class X = H, std::enable_if_t<!is_parser_v<X>, nullptr_t> = nullptr>
+		constexpr trys_variant(X h, Parsers... parsers) : internal_{ h, parsers... } {
+		}
+		constexpr auto parse(source_type_t<T>&& src)const {
+			return internal_(std::move(src));
+		}
+	};
+	template<class H, class... Parsers>
+	trys_variant(H h, Parsers... ps)->trys_variant<H, Parsers...>;
+
+	/*
+	* trys end
+	*/
 	template<class F>
 	class lazy :public parser<
 		source_type_t<std::invoke_result_t<F>>,
@@ -1046,4 +1103,29 @@ namespace tig::cppcp {
 	constexpr auto make_to_catching(P p) {
 		return to_catching<P, Es...>(p);
 	}
+
+
+	template<class P,class F=decltype(always_true)>
+	class option :public parser<source_type_t<P>, std::optional<result_type_t<P>>, option<P,F>> {
+		P p_;
+		F f_;
+	public:
+		constexpr option(P p, F f = always_true) :p_(p),f_(f) {
+
+		}
+
+		constexpr ret<source_type_t<P>,std::optional<result_type_t<P>>> parse(source_type_t<P>&& src)const {
+			auto m = src;
+			try {
+				auto r = p_(std::move(src));
+				if (f_(r.get())) {
+					return { r.itr(), std::make_optional(r.get()) };
+				}
+				return { m, std::nullopt };
+			}
+			catch (parser_exception) {
+				return { m,std::nullopt };
+			}
+		}
+	};
 }

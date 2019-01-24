@@ -263,7 +263,7 @@ TEST(CppCP, trys_true)
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
 	auto f = itr::any<vitr<int>>();
-	auto&& fn = trys([](int e) {return true; },f);
+	auto&& fn = trys( f);
 	auto &&r = fn(cbegin(target));
 	EXPECT_EQ(r.get(), -1);
 	EXPECT_EQ(r.itr(), std::next(cbegin(target), 1));
@@ -393,5 +393,17 @@ TEST(CppCP, to_catching)
 		make_to_uncatching<parser_exception>(throwing<vitr<int>, int>(parser_exception()))
 	);
 	EXPECT_THROW(fn(cbegin(target)).get(), parser_exception);
+
+}
+
+TEST(CppCP, option)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn =option( make_to_catching<parser_exception>(
+		make_to_uncatching<parser_exception>(throwing<vitr<int>, int>(parser_exception()))
+		));
+	EXPECT_EQ(fn(cbegin(target)).get(), std::nullopt);
 
 }
