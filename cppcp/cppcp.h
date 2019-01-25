@@ -1016,7 +1016,7 @@ namespace tig::cppcp {
 	class many :public parser<source_type_t<P>, result_type_t<R>, many<P, R,F> > {
 		P p_;
 		F f_;
-		const R init_;
+		R init_;
 	public:
 		constexpr many(P p,R init,F updateFn) :p_(p),f_(updateFn),init_(init) {
 
@@ -1033,6 +1033,42 @@ namespace tig::cppcp {
 					auto rp = r.get();
 					std::pair<bool, result_type_t<R>> uv = f_(std::move(rv), rp);
 					if (uv.first) {
+						return { s,uv.second };
+					}
+					else {
+						rv = uv.second;
+					}
+				}
+			}
+			catch (parser_exception) {
+				return { s,rv };
+			}
+		}
+	};
+	template<class P, class R, class F>
+	class manyN :public parser<source_type_t<P>, result_type_t<R>, manyN<P, R, F> > {
+		P p_;
+		F f_;
+		size_t n_;
+		R init_;
+	public:
+		constexpr manyN(P p,size_t n, R init, F updateFn) :n_(n),p_(p), f_(updateFn), init_(init) {
+
+		}
+		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+			auto s = src;
+			auto ri = init_(std::move(s));
+			s = ri.itr();
+			result_type_t<R> rv = ri.get();
+			try {
+				size_t cnt = 0;
+				while (true) {
+					auto r = p_(std::move(s));
+					++cnt;
+					s = r.itr();
+					auto rp = r.get();
+					std::pair<bool, result_type_t<R>> uv = f_(std::move(rv), rp);
+					if (uv.first&&cnt>=n_) {
 						return { s,uv.second };
 					}
 					else {
