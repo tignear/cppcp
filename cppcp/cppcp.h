@@ -549,11 +549,16 @@ namespace tig::cppcp {
 			auto&& itr = rs.itr();
 			auto&& current = rs.get();
 			do {
-				auto&& r = p_(std::move(itr));
-				itr = r.itr();
-				auto&& ar = accumulator_(std::move(current), std::move(r.get()));
-				current = std::move(ar.second);
-				if (ar.first) {
+				try {
+					auto&& r = p_(std::move(itr));
+					itr = r.itr();
+					auto&& ar = accumulator_(std::move(current), std::move(r.get()));
+					current = std::move(ar.second);
+					if (ar.first) {
+						break;
+					}
+				}
+				catch (parser_exception) {
 					break;
 				}
 			} while (true);
@@ -572,14 +577,19 @@ namespace tig::cppcp {
 			auto&& itr = r1.itr();
 			auto&& current = r1.get();
 			do {
-				auto&& r = p(std::move(itr));
-				itr = r.itr();
-				auto&& ar = accumulator(std::move(current), std::move(r.get()));
-				current = std::move(ar.second);
-				if (ar.first) {
+				try {
+
+					auto&& r = p(std::move(itr));
+					itr = r.itr();
+					auto&& ar = accumulator(std::move(current), std::move(r.get()));
+					current = std::move(ar.second);
+					if (ar.first) {
+						break;
+					}
+				}
+				catch (parser_exception) {
 					break;
 				}
-
 			} while (true);
 			return ret{ std::move(itr),std::move(current) };
 		};
