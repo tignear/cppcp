@@ -107,6 +107,7 @@ TEST(CppCP, reduce)
 	EXPECT_EQ(r.get().value(),(target.at(0) + target.at(target.size() - 1))*(target.size() / 2.0));
 	EXPECT_EQ(r.itr(), cend(target));
 }
+
 TEST(CppCP, join0) {
 	auto && target = std::vector<int>{ -1, 0, 1, 2, 3, 4, 5 };
 	auto && r = tig::cppcp::join<vitr<int>>()(cbegin(target));
@@ -373,7 +374,6 @@ TEST(CppCP, many)
 	});
 	auto expect = std::vector<int>{ -1, 0, 1, 2 };
 	EXPECT_EQ(fn(cbegin(target)).get(), expect);
-
 }
 TEST(CppCP, manyN)
 {
@@ -405,8 +405,9 @@ TEST(CppCP, manyNM)
 	});
 	auto expect = std::vector<int>{ -1, 0, 1, 2,3 };
 	EXPECT_EQ(fn(cbegin(target)).get(), expect);
-
 }
+
+
 TEST(CppCP, to_uncatching)
 {
 	using namespace std::literals::string_literals;
@@ -451,3 +452,14 @@ TEST(CppCP, option_or)
 	EXPECT_EQ(fn(cbegin(target)).get(), -999);
 
 }
+TEST(CppCP, get0)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn =get0(join(itr::any<vitr<int>>()));
+	EXPECT_EQ(fn(cbegin(target)).get(), -1);
+
+}
+
+

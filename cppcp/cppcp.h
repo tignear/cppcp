@@ -595,12 +595,7 @@ namespace tig::cppcp {
 		};
 		return parser_f<Src,Value,decltype(f)>{ f };
 	}
-	/*template <class Src>
-	constexpr auto join() {
-		return parser_builder{ [=](Src&& src) {
-			return ret<Src, std::tuple<>>{ src,{} };
-		} }.build<Src, std::tuple<>>();
-	}*/
+
 	template <class T>
 	struct is_skip_tag {
 		static const constexpr bool value = false;
@@ -686,6 +681,7 @@ namespace tig::cppcp {
 		typename join_result_type_supplier<is_skip_tag, Parsers...>::type,
 		join<Src, Parsers...>
 	> {
+		std::tuple< std::remove_reference_t<Parsers>...> ps_;
 		constexpr join( Parsers... ps) :ps_(std::tuple{ ps... }) {}
 
 		constexpr decltype(
@@ -1246,6 +1242,17 @@ namespace tig::cppcp {
 			}
 		}
 	};
+	template<class P>
+	class get0:public parser<source_type_t<P>, std::decay_t<decltype(std::get<0>(std::declval< result_type_t<P>>()))>,get0<P>> {
+		P p_;
+	public:
+		constexpr get0(P p) :p_(p){
 
+		}
+		constexpr auto parse(source_type_t<P>&& src)const {
+			auto r = p_(std::move(src));
+			return ret{ r.itr(),std::get<0>(r.get()) };
+		}
+	};
 
 }
