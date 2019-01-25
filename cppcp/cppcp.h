@@ -1096,6 +1096,48 @@ namespace tig::cppcp {
 			}
 		}
 	};
+	template<class P, class R, class F>
+	class manyNM :public parser<source_type_t<P>, result_type_t<R>, manyNM<P, R, F> > {
+		P p_;
+		F f_;
+		size_t n_;
+		size_t m_;
+		R init_;
+	public:
+		constexpr manyNM(P p, size_t n,size_t m, R init, F updateFn) :n_(n),m_(m), p_(p), f_(updateFn), init_(init) {
+
+		}
+		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+			auto s = src;
+			auto ri = init_(std::move(s));
+			s = ri.itr();
+			result_type_t<R> rv = ri.get();
+			size_t cnt = 0;
+			try {
+				while (cnt<=m_) {
+					auto r = p_(std::move(s));
+					++cnt;
+					s = r.itr();
+					auto rp = r.get();
+					std::pair<bool, result_type_t<R>> uv = f_(std::move(rv), rp);
+					if (uv.first&&cnt >= n_) {
+						return { s,uv.second };
+					}
+					else {
+						rv = uv.second;
+					}
+				}
+				return { s,rv };
+
+			}
+			catch (parser_exception) {
+				if (cnt >= n_) {
+					return { s,rv };
+				}
+				throw;
+			}
+		}
+	};
 	template<class P,class S>
 	constexpr auto to_uncatching_impl(P p,S&& s) {
 		return p(std::move(s));

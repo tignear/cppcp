@@ -391,6 +391,22 @@ TEST(CppCP, manyN)
 	EXPECT_EQ(fn(cbegin(target)).get(), expect);
 
 }
+TEST(CppCP, manyNM)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = manyNM(itr::any<vitr<int>>(), 5,5, sup<vitr<int>>(std::vector<int>()), [](auto&& list, auto v) {
+		list.push_back(v);
+		if (list.size() >= 4) {
+			return accm::terminate(std::move(list));
+		}
+		return accm::contd(std::move(list));
+	});
+	auto expect = std::vector<int>{ -1, 0, 1, 2,3 };
+	EXPECT_EQ(fn(cbegin(target)).get(), expect);
+
+}
 TEST(CppCP, to_uncatching)
 {
 	using namespace std::literals::string_literals;
