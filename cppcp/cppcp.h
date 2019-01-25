@@ -961,6 +961,8 @@ namespace tig::cppcp {
 	/*
 	* trys end
 	*/
+
+
 	template<class F>
 	class lazy :public parser<
 		source_type_t<std::invoke_result_t<F>>,
@@ -1070,8 +1072,8 @@ namespace tig::cppcp {
 			auto ri = init_(std::move(s));
 			s = ri.itr();
 			result_type_t<R> rv = ri.get();
+			size_t cnt = 0;
 			try {
-				size_t cnt = 0;
 				while (true) {
 					auto r = p_(std::move(s));
 					++cnt;
@@ -1087,7 +1089,10 @@ namespace tig::cppcp {
 				}
 			}
 			catch (parser_exception) {
-				return { s,rv };
+				if (cnt >= n) {
+					return { s,rv };
+				}
+				throw;
 			}
 		}
 	};
@@ -1199,4 +1204,6 @@ namespace tig::cppcp {
 			}
 		}
 	};
+
+
 }
