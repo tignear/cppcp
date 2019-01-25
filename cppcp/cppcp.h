@@ -1089,7 +1089,7 @@ namespace tig::cppcp {
 				}
 			}
 			catch (parser_exception) {
-				if (cnt >= n) {
+				if (cnt >= n_) {
 					return { s,rv };
 				}
 				throw;
