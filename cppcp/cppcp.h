@@ -1103,8 +1103,30 @@ namespace tig::cppcp {
 	constexpr auto make_to_catching(P p) {
 		return to_catching<P, Es...>(p);
 	}
+	template<class P,class V,class F = decltype(always_true)>
+	class option_or: public parser<source_type_t<P>, std::common_type_t<V, result_type_t<P>>, option_or<P,V, F>> {
+		P p_;
+		V v_;
+		F f_;
+	public:
+		constexpr option_or(P p,V v,F f = always_true) :p_(p), f_(f),v_(v) {
 
+		}
 
+		constexpr ret<source_type_t<P>,std::common_type_t<V,result_type_t<P>>> parse(source_type_t<P>&& src)const {
+			auto m = src;
+			try {
+				auto r = p_(std::move(src));
+				if (f_(r.get())) {
+					return { r.itr(), r.get() };
+				}
+				return { m, v_ };
+			}
+			catch (parser_exception) {
+				return { m,v_ };
+			}
+		}
+	};
 	template<class P,class F=decltype(always_true)>
 	class option :public parser<source_type_t<P>, std::optional<result_type_t<P>>, option<P,F>> {
 		P p_;
@@ -1113,7 +1135,10 @@ namespace tig::cppcp {
 		constexpr option(P p, F f = always_true) :p_(p),f_(f) {
 
 		}
-
+		template<class V>
+		constexpr auto or (V v) {
+			return option_or(p_, v, f_);
+		}
 		constexpr ret<source_type_t<P>,std::optional<result_type_t<P>>> parse(source_type_t<P>&& src)const {
 			auto m = src;
 			try {

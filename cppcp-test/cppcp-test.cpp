@@ -407,3 +407,15 @@ TEST(CppCP, option)
 	EXPECT_EQ(fn(cbegin(target)).get(), std::nullopt);
 
 }
+
+TEST(CppCP, option_or)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = option_or(make_to_catching<parser_exception>(
+		make_to_uncatching<parser_exception>(throwing<vitr<int>, int>(parser_exception()))
+		),-999);
+	EXPECT_EQ(fn(cbegin(target)).get(), -999);
+
+}
