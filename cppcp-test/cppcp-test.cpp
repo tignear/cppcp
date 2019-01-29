@@ -365,7 +365,7 @@ TEST(CppCP, many)
 	using namespace std::literals::string_literals;
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
-	auto&& fn = many(itr::any<vitr<int>>(), sup<vitr<int>>(std::vector<int>()), [](auto&& list, auto v) {
+	auto&& fn = many(sup<vitr<int>>(std::vector<int>()), itr::any<vitr<int>>(),[](auto&& list, auto v) {
 		list.push_back(v);
 		if (list.size() >= 4) {
 			return accm::terminate(std::move(list));
@@ -380,7 +380,7 @@ TEST(CppCP, manyN)
 	using namespace std::literals::string_literals;
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
-	auto&& fn = manyN(itr::any<vitr<int>>(),5, sup<vitr<int>>(std::vector<int>()), [](auto&& list, auto v) {
+	auto&& fn = manyN(sup<vitr<int>>(std::vector<int>()), itr::any<vitr<int>>(),5,  [](auto&& list, auto v) {
 		list.push_back(v);
 		if (list.size() >= 4) {
 			return accm::terminate(std::move(list));
@@ -396,7 +396,7 @@ TEST(CppCP, manyNM)
 	using namespace std::literals::string_literals;
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
-	auto&& fn = manyNM(itr::any<vitr<int>>(), 5,5, sup<vitr<int>>(std::vector<int>()), [](auto&& list, auto v) {
+	auto&& fn = manyNM(sup<vitr<int>>(std::vector<int>()), itr::any<vitr<int>>(), 5,5,  [](auto&& list, auto v) {
 		list.push_back(v);
 		if (list.size() >= 4) {
 			return accm::terminate(std::move(list));

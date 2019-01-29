@@ -1026,15 +1026,16 @@ namespace tig::cppcp {
 		F f_;
 		R init_;
 	public:
-		constexpr many(P p,R init,F updateFn) :p_(p),f_(updateFn),init_(init) {
+		constexpr many(R init, P p, F updateFn) :p_(p),f_(updateFn),init_(init) {
 
 		}
 		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
 			auto s = src;
-			auto ri=init_(std::move(s));
+			auto ri = init_(std::move(s));
 			s = ri.itr();
 			result_type_t<R> rv = ri.get();
 			try {
+
 				while (true) {
 					auto r = p_(std::move(s));
 					s = r.itr();
@@ -1060,7 +1061,7 @@ namespace tig::cppcp {
 		size_t n_;
 		R init_;
 	public:
-		constexpr manyN(P p,size_t n, R init, F updateFn) :n_(n),p_(p), f_(updateFn), init_(init) {
+		constexpr manyN(R init, P p,size_t n,  F updateFn) :n_(n),p_(p), f_(updateFn), init_(init) {
 
 		}
 		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
@@ -1100,7 +1101,7 @@ namespace tig::cppcp {
 		size_t m_;
 		R init_;
 	public:
-		constexpr manyNM(P p, size_t n,size_t m, R init, F updateFn) :n_(n),m_(m), p_(p), f_(updateFn), init_(init) {
+		constexpr manyNM(R init, P p, size_t n,size_t m, F updateFn) :n_(n),m_(m), p_(p), f_(updateFn), init_(init) {
 
 		}
 		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
