@@ -1267,7 +1267,7 @@ namespace tig::cppcp {
 
 		}
 		constexpr ret< source_type_t<From>,To> parse(source_type_t<From>&& src)const {
-			auto r=p_(src);
+			auto r=p_(std::move(src));
 			return {r.itr(),r.get()};
 		}
 	};
