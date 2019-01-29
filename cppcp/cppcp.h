@@ -1255,5 +1255,19 @@ namespace tig::cppcp {
 			return ret{ r.itr(),std::get<0>(r.get()) };
 		}
 	};
+	template<class From,class To>
+	class parser_cast_impl {
+		From p_;
+	public:
+		constexpr parser_cast_impl(From p) :p_(p) {
 
+		}
+		To parse(source_type_t<From>&& src) {
+			return p_(src);
+		}
+	};
+	template<class To,class From>
+	constexpr static auto parser_cast(From f) {
+		return parser_cast_impl<From, To>(f);
+	}
 }
