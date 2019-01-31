@@ -1331,26 +1331,26 @@ namespace tig::cppcp {
 		}
 
 		node<Op, Term> left() {
-			if (type_ != node_type::node&&(!data_)) {
-				throw std::invalid_argument():
+			if (type_ != node_type::node) {
+				throw std::invalid_argument("");
 			}
 			return data_.node->left;
 		}
 		node<Op, Term> right() {
-			if (type_ != node_type::node && (!data_)) {
-				throw std::invalid_argument() :
+			if (type_ != node_type::node) {
+				throw std::invalid_argument("");
 			}
 			return data_.node->right;
 		}
 		Op op() {
-			if (type_ != node_type::node && (!data_)) {
-				throw std::invalid_argument() :
+			if (type_ != node_type::node ) {
+				throw std::invalid_argument("");
 			}
 			return data_.node->op;
 		}
 		Term term() {
-			if (type_ != node_type::leaf && (!data_)) {
-				throw std::invalid_argument() :
+			if (type_ != node_type::leaf ) {
+				throw std::invalid_argument("");
 			}
 			return data_.term;
 		}
@@ -1417,7 +1417,7 @@ namespace tig::cppcp {
 				}),
 				join(op_, term_),
 				[](auto&& a, auto&& e) {
-					return accm(rt::make_node(a, std::get<0>(e), std::get<1>(e)));
+					return accm::contd(rt::make_node(a, std::get<0>(e), std::get<1>(e)));
 				}
 			);
 			return c(std::move(src));
