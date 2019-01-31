@@ -1327,7 +1327,7 @@ namespace tig::cppcp {
 			}
 		}
 
-		node<Op,Term>& operator=(const node<Op, Term>& rhs)
+		node<Op,Term>& operator=(const node<Op, Term>& n)
 		{
 			type_ = n.type_;
 			switch (n.type_)
