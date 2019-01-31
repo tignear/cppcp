@@ -1326,6 +1326,23 @@ namespace tig::cppcp {
 				break;
 			}
 		}
+
+		node<Op,Term>& operator=(const node<Op, Term>& rhs)
+		{
+			type_ = n.type_;
+			switch (n.type_)
+			{
+			case node_type::leaf:
+				new(&data_.term) Term(n.data_.term);
+				break;
+			case node_type::node:
+				data_.node = new node_data<Op, Term>(*n.data_.node);
+				break;
+			default:
+				break;
+			}
+			return *this;
+		}
 		node_type type() {
 			return type_;
 		}
