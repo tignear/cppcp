@@ -1486,9 +1486,7 @@ namespace tig::cppcp {
 				}
 			);
 			return c(std::move(src));
-		}
-			);
-			return c(std::move(src));
+			
 		}
 	};
 }
