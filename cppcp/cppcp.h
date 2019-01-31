@@ -1309,8 +1309,18 @@ namespace tig::cppcp {
 		node_type type_;
 		node_data_or_term_union<Op, Term> data_;
 	protected:
-		node(node_type ty, node_data_or_term_union<Op,Term>&& uni):type_(ty),data_(uni) {
-
+		node(node_type ty, node_data_or_term_union<Op, Term>&& uni) :type_(ty) {
+			switch (ty)
+			{
+			case node_type::leaf:
+				new(&data_.term) Term(uni.term);
+				break;
+			case node_type::node:
+				data_.node = new node_data<Op, Term>(*uni.node);
+				break;
+			default:
+				break;
+			}
 		}
 	public:
 		node(const node<Op,Term>& n) :type_(n.type_) {
@@ -1359,11 +1369,30 @@ namespace tig::cppcp {
 			}
 			return data_.node->right;
 		}
+		void right(node<Op, Term> v) {
+			if (type_ != node_type::node) {
+				throw std::invalid_argument("");
+			}
+			data_.node->right = v;
+
+		}
+		void left(node<Op, Term> v) {
+			if (type_ != node_type::node) {
+				throw std::invalid_argument("");
+			}
+			data_.node->left = v;
+		}
 		Op op() {
 			if (type_ != node_type::node ) {
 				throw std::invalid_argument("");
 			}
 			return data_.node->op;
+		}
+		void op(Op v) {
+			if (type_ != node_type::node) {
+				throw std::invalid_argument("");
+			}
+			return data_.node->op=v;
 		}
 		Term term() {
 			if (type_ != node_type::leaf ) {
@@ -1440,5 +1469,41 @@ namespace tig::cppcp {
 			return c(std::move(src));
 		}
 	};
+	template<class Term, class Op>
+	class expression_right :public parser<
+		source_type_t<Term>,
+		node<result_type_t<Op>, result_type_t<Term>>,
+		expression_right<Term, Op>
+	> {
+		Term term_;
+		Op op_;
 
+		using rt = node < result_type_t<Op>, result_type_t<Term>>;
+	public:
+		constexpr expression_right(Term term, Op op) :term_(term), op_(op) {
+
+		}
+		constexpr auto parse(source_type_t<Term>&& src)const {
+			static auto c = many(
+				map(term_, [](auto&& e) {
+					return rt::make_leaf(e);
+				}),
+				join(op_, term_),
+				[](auto&& a, auto&& e) {
+					ref.type()
+					auto& ref = a;
+					if (ref.type() == node_type::node) {
+						return rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e)));
+					}
+					while (ref.right().type()==node_type::node) {
+						ref = ref.right();
+					}
+					auto l_leaf = ref.right();
+					ref.right(rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
+					return accm::contd(a);
+				}
+			);
+			return c(std::move(src));
+		}
+	};
 }
