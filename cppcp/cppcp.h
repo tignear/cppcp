@@ -1357,44 +1357,27 @@ namespace tig::cppcp {
 			return type_;
 		}
 
-		node<Op, Term> left() {
+		node<Op, Term>& left() {
 			if (type_ != node_type::node) {
 				throw std::invalid_argument("");
 			}
 			return data_.node->left;
 		}
-		node<Op, Term> right() {
+		node<Op, Term>& right() {
 			if (type_ != node_type::node) {
 				throw std::invalid_argument("");
 			}
 			return data_.node->right;
 		}
-		void right(node<Op, Term> v) {
-			if (type_ != node_type::node) {
-				throw std::invalid_argument("");
-			}
-			data_.node->right = v;
 
-		}
-		void left(node<Op, Term> v) {
-			if (type_ != node_type::node) {
-				throw std::invalid_argument("");
-			}
-			data_.node->left = v;
-		}
-		Op op() {
+		Op& op() {
 			if (type_ != node_type::node ) {
 				throw std::invalid_argument("");
 			}
 			return data_.node->op;
 		}
-		void op(Op v) {
-			if (type_ != node_type::node) {
-				throw std::invalid_argument("");
-			}
-			return data_.node->op=v;
-		}
-		Term term() {
+
+		Term& term() {
 			if (type_ != node_type::leaf ) {
 				throw std::invalid_argument("");
 			}
@@ -1440,7 +1423,6 @@ namespace tig::cppcp {
 		~node_data_or_term_union(){}
 	};
 
-	using nodex = node<int, int>;
 
 	template<class Term,class Op>
 	class expression_left :public parser<
@@ -1486,22 +1468,43 @@ namespace tig::cppcp {
 		constexpr auto parse(source_type_t<Term>&& src)const {
 			static auto c = many(
 				map(term_, [](auto&& e) {
+				return rt::make_leaf(e);
+			}),
+				join(op_, term_),
+				[](auto a, auto&& e) {
+				auto* ref = &a;
+
+				if (ref->type() == node_type::leaf) {
+					return accm::contd(rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
+				}
+				while (ref->right().type() == node_type::node) {
+					ref = &ref->right();
+				}
+				auto l_leaf = ref->right();
+				ref->right(rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
+				return accm::contd(a);
+			}		constexpr auto parse(source_type_t<Term>&& src)const {
+			static auto c = many(
+				map(term_, [](auto&& e) {
 					return rt::make_leaf(e);
 				}),
 				join(op_, term_),
-				[](auto&& a, auto&& e) {
-					ref.type()
-					auto& ref = a;
-					if (ref.type() == node_type::node) {
-						return rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e)));
+				[](auto a, auto&& e) {
+					auto* ref = &a;
+
+					if (ref->type() == node_type::leaf) {
+						return accm::contd(rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
 					}
-					while (ref.right().type()==node_type::node) {
-						ref = ref.right();
+					while (ref->right().type()==node_type::node) {
+						ref =& ref->right();
 					}
-					auto l_leaf = ref.right();
-					ref.right(rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
+					auto l_leaf = ref->right();
+					ref->right()=rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e)));
 					return accm::contd(a);
 				}
+			);
+			return c(std::move(src));
+		}
 			);
 			return c(std::move(src));
 		}
