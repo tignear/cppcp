@@ -54,8 +54,8 @@ TEST(CppCP, fold)
 {
 	std::vector<int> target{ 1,2,3,4,5 };
 	auto&& fn = tig::cppcp::fold{
+				tig::cppcp::sup<vitr<int>,int>(6),
 		tig::cppcp::itr::any_unless_end<vitr<int>>(cend(target)),
-		tig::cppcp::sup<vitr<int>,int>(6),
 		 [](auto&& a, auto && v){
 		if (v)
 		{
@@ -75,8 +75,8 @@ TEST(CppCP, foldAndExitIfNullOpt)
 {
 	std::vector<int> target{ 1,2,3,4,5 };
 	auto&& fn = tig::cppcp::fold(
-		tig::cppcp::itr::any_unless_end<vitr<int>>(cend(target)),
 		tig::cppcp::sup<vitr<int>, int>(6),
+		tig::cppcp::itr::any_unless_end<vitr<int>>(cend(target)),
 		tig::cppcp::exit_if_nullopt<int,int>([](auto && a,auto&& e) {
 			return a + e;
 		})
@@ -133,8 +133,8 @@ TEST(CppCP, join2)
 	std::vector<int> target{-1,0 ,1,2,3,4,5 };
 	auto an = itr::any<vitr<int>>();
 	auto&& fn=join(an, fold(
+		sup<vitr<int>, int>(6),
 		itr::any_unless_end(cend(target)),
-		sup<vitr<int>,int>(6),
 		exit_if_nullopt<int, int>([](auto && a, auto&& e) {
 			return a + e;
 		})
@@ -151,8 +151,8 @@ TEST(CppCP, join3)
 
 	std::vector<int> target{ -2,-1,0 ,1,2,3,4,5 };
 	auto&& fn = join(itr::any<vitr<int>>(), itr::any<vitr<int>>(),fold(
-		itr::any_unless_end<vitr<int>>(cend(target)),
 		sup<vitr<int>, int>(6),
+		itr::any_unless_end<vitr<int>>(cend(target)),
 		exit_if_nullopt<int, int>([](auto && a, auto&& e) {
 			return a + e;
 		})

@@ -532,19 +532,19 @@ namespace tig::cppcp {
 			return std::make_pair(true, t);
 		}
 	}
-	template<class P1,class P2,class Accumulator>
-	class fold:public parser<typename P1::source_type,typename P2::result_type,fold<P1,P2, Accumulator>> {
-		P1 p_;
-		P2 init_;
+	template<class PI, class PA, class Accumulator>
+	class fold:public parser<typename PI::source_type,typename PI::result_type,fold<PI,PA, Accumulator>> {
+		PA p_;
+		PI init_;
 		Accumulator accumulator_;
 	public:
 		constexpr fold(
-			P1 p, P2/*std::function<R(void)>*/ init,
+			 PI/*std::function<R(void)>*/ init, PA p,
 			Accumulator/*std::function<either<R,R>>(R&&,Value&&)>*/ accumulator
-		):parser(*this),p_(p),init_(init),accumulator_(accumulator) {
+		):p_(p),init_(init),accumulator_(accumulator) {
 
 		}
-		constexpr ret<typename parser::source_type, typename parser::result_type> parse(typename P1::source_type&& src)const{
+		constexpr ret<typename parser::source_type, typename parser::result_type> parse(typename PI::source_type&& src)const{
 			auto&& rs = init_(std::move(src));
 			auto&& itr = rs.itr();
 			auto&& current = rs.get();
@@ -655,7 +655,7 @@ namespace tig::cppcp {
 	) {
 		auto r = std::get<index>(tuple)(std::move(src));
 		auto r2 = join_impl<Src, Tuple, SkipJudge, index + size_t(1), size>(std::move(r.itr()), std::move(tuple));
-		return ret{ r2.itr(), std::tuple_cat(std::tuple{ r.get() }, r2.get()) };
+		return ret{ r2.itr(), std::tuple_cat(std::tuple{r.get() }, r2.get()) };
 	}
 	template<class Src, class Tuple, template<class Target> class SkipJudge, size_t index, size_t size>
 	constexpr auto join_impl(
@@ -1275,4 +1275,141 @@ namespace tig::cppcp {
 	constexpr static auto parser_cast(From f) {
 		return parser_cast_impl<From, To>(f);
 	}
+	template<class P,class To>
+	class to_collection_impl:parser<
+		source_type_t<P>,
+		To,
+		to_collection_impl<P,To>
+	> {
+		P p_;
+		constexpr to_collection_impl(P p) :p_(p) {
+
+		}
+		constexpr auto parse(source_type_t<P>&& s)const {
+			auto&& r = p_(std::move(src));
+			return ret<source_type_t<P>, To>{
+				r.itr(),
+				To{ r.get() }
+			};
+		}
+	};
+	template<template<class>class To,class P>
+	constexpr auto to_collection(P p) {
+		return to_collection_impl<P,To<result_type_t<P>>>(p);
+	}
+
+	template<class Op, class Term>
+	union node_data_or_term_union;
+
+	enum class node_type {
+		leaf,node
+	};
+	template<class Op, class Term>
+	class node {
+		node_type type_;
+		node_data_or_term_union<Op, Term>* data_;
+	protected:
+		node(node_type ty, node_data_or_term_union<Op,Term>* uni):type_(ty),data_(uni) {
+
+		}
+	public:
+		node_type type() {
+			return type_;
+		}
+
+		node<Op, Term> left() {
+			if (type_ != node_type::node&&(!data_)) {
+				throw std::invalid_argument():
+			}
+			return data->node.left;
+		}
+		node<Op, Term> right() {
+			if (type_ != node_type::node && (!data_)) {
+				throw std::invalid_argument() :
+			}
+			return data->node.right;
+		}
+		Op op() {
+			if (type_ != node_type::node && (!data_)) {
+				throw std::invalid_argument() :
+			}
+			return data->node.op;
+		}
+		Term term() {
+			if (type_ != node_type::leaf && (!data_)) {
+				throw std::invalid_argument() :
+			}
+			return data->term;
+		}
+		~node() {
+			if (!data_) {
+				return;
+			}
+			switch (type_)
+			{
+			case node_type::leaf:
+				data_->~term();
+				break;
+			case node_type::node:
+				data_->~node();
+				break;
+			default:
+				break;
+			}
+			delete data_;
+		}
+		static node<Op,Term> make_node(node<Op, Term> left, Op op, node<Op, Term> right) {
+			node_data_or_term_union<Op, Term>* uni =new node_data_or_term_union<Op, Term>{};
+			uni->node = node_data<Op, Term>{ op,left,right };
+			return node{ node_type::node,uni};
+		}
+		static node<Op, Term> make_leaf(Term t) {
+			node_data_or_term_union<Op, Term>* uni = new node_data_or_term_union<Op, Term>{};
+			uni->term = t;
+			return node{ node_type::leaf,uni };
+		}
+	};
+	template<class Op, class Term>
+	struct node_data {
+		Op op;
+		node<Op, Term> left;
+		node<Op, Term> right;
+	};
+	template<class Op, class Term>
+	union node_data_or_term_union
+	{
+		node_data<Op,Term> node;
+		Term term;
+	};
+
+	using nodex = node<int, int>;
+
+	template<class Term,class Op>
+	class expression_left :public parser<
+		source_type_t<Term>,
+		node<result_type_t<Op>,result_type_t<Term>>,
+		expression_left<Term, Op>
+	> {
+		Term term_;
+		Op op_;
+
+		using rt = node < result_type_t<Op>, result_type_t<Term>>;
+	public:
+		constexpr expression_left(Term term,Op op):term_(term),op_(op) {
+
+		}
+		constexpr auto parse(source_type_t<Term>&& src)const {
+			static auto c=many(
+				map(term, [](auto&& e) {
+					return rt::make_leaf(e);
+				}),
+				join(op, term),
+				[](auto&& a, auto&& e) {
+					return accm(rt::make_node(a, std::get<0>(e), std::get<1>(e)));
+				}
+			);
+			return c(std::move(src));
+		}
+	};
+
 }
