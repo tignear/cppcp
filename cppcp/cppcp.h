@@ -1321,51 +1321,48 @@ namespace tig::cppcp {
 			if (type_ != node_type::node&&(!data_)) {
 				throw std::invalid_argument():
 			}
-			return data->node.left;
+			return data_.node->left;
 		}
 		node<Op, Term> right() {
 			if (type_ != node_type::node && (!data_)) {
 				throw std::invalid_argument() :
 			}
-			return data->node.right;
+			return data_.node->right;
 		}
 		Op op() {
 			if (type_ != node_type::node && (!data_)) {
 				throw std::invalid_argument() :
 			}
-			return data->node.op;
+			return data_.node->op;
 		}
 		Term term() {
 			if (type_ != node_type::leaf && (!data_)) {
 				throw std::invalid_argument() :
 			}
-			return data->term;
+			return data_.term;
 		}
 		~node() {
-			if (!data_) {
-				return;
-			}
+
 			switch (type_)
 			{
 			case node_type::leaf:
-				data_->~term();
+				data_.term.~Term();
 				break;
 			case node_type::node:
-				data_->~node();
+				delete data_.node;
 				break;
 			default:
 				break;
 			}
-			delete data_;
 		}
 		static node<Op,Term> make_node(node<Op, Term> left, Op op, node<Op, Term> right) {
 			node_data_or_term_union<Op, Term> uni =node_data_or_term_union<Op, Term>{};
-			uni->node = node_data<Op, Term>{ op,left,right };
+			new(&uni.node) new node_data<Op, Term>{ op,left,right };
 			return node{ node_type::node,std::move(uni) };
 		}
 		static node<Op, Term> make_leaf(Term t) {
 			node_data_or_term_union<Op, Term> uni = node_data_or_term_union<Op, Term>{};
-			uni->term = t;
+			new(&uni.term) Term(std::move(t));
 			return node{ node_type::leaf,std::move(uni) };
 		}
 	};
@@ -1378,8 +1375,9 @@ namespace tig::cppcp {
 	template<class Op, class Term>
 	union node_data_or_term_union
 	{
-		node_data<Op,Term> node;
+		node_data<Op,Term>* node;
 		Term term;
+		~node_data_or_term_union(){}
 	};
 
 	using nodex = node<int, int>;

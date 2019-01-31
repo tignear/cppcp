@@ -459,7 +459,6 @@ TEST(CppCP, get0)
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
 	auto&& fn =get0(join(itr::any<vitr<int>>()));
 	EXPECT_EQ(fn(cbegin(target)).get(), -1);
-
 }
 
 
