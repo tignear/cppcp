@@ -1313,14 +1313,14 @@ namespace tig::cppcp {
 
 		}
 	public:
-		node(const node<Op,Term> n) :type_(n.type_) {
+		node(const node<Op,Term>& n) :type_(n.type_) {
 			switch (n.type_)
 			{
 			case node_type::leaf:
 				new(&data_.term) Term(n.data_.term);
 				break;
 			case node_type::node:
-				new(&data_.node) new node_data<Op,Term>(*n.data_->node);
+				data_.node= new node_data<Op,Term>(*n.data_->node);
 				break;
 			default:
 				break;
@@ -1370,7 +1370,7 @@ namespace tig::cppcp {
 		}
 		static node<Op,Term> make_node(node<Op, Term> left, Op op, node<Op, Term> right) {
 			node_data_or_term_union<Op, Term> uni =node_data_or_term_union<Op, Term>{};
-			new(&uni.node) new node_data<Op, Term>{ op,left,right };
+			&uni.node=new node_data<Op, Term>{ op,left,right };
 			return node{ node_type::node,std::move(uni) };
 		}
 		static node<Op, Term> make_leaf(Term t) {
