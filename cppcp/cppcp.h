@@ -1307,9 +1307,9 @@ namespace tig::cppcp {
 	template<class Op, class Term>
 	class node {
 		node_type type_;
-		node_data_or_term_union<Op, Term>* data_;
+		node_data_or_term_union<Op, Term> data_;
 	protected:
-		node(node_type ty, node_data_or_term_union<Op,Term>* uni):type_(ty),data_(uni) {
+		node(node_type ty, node_data_or_term_union<Op,Term>&& uni):type_(ty),data_(uni) {
 
 		}
 	public:
@@ -1359,14 +1359,14 @@ namespace tig::cppcp {
 			delete data_;
 		}
 		static node<Op,Term> make_node(node<Op, Term> left, Op op, node<Op, Term> right) {
-			node_data_or_term_union<Op, Term>* uni =new node_data_or_term_union<Op, Term>{};
+			node_data_or_term_union<Op, Term> uni =node_data_or_term_union<Op, Term>{};
 			uni->node = node_data<Op, Term>{ op,left,right };
-			return node{ node_type::node,uni};
+			return node{ node_type::node,std::move(uni) };
 		}
 		static node<Op, Term> make_leaf(Term t) {
-			node_data_or_term_union<Op, Term>* uni = new node_data_or_term_union<Op, Term>{};
+			node_data_or_term_union<Op, Term> uni = node_data_or_term_union<Op, Term>{};
 			uni->term = t;
-			return node{ node_type::leaf,uni };
+			return node{ node_type::leaf,std::move(uni) };
 		}
 	};
 	template<class Op, class Term>
@@ -1400,10 +1400,10 @@ namespace tig::cppcp {
 		}
 		constexpr auto parse(source_type_t<Term>&& src)const {
 			static auto c=many(
-				map(term, [](auto&& e) {
+				map(term_, [](auto&& e) {
 					return rt::make_leaf(e);
 				}),
-				join(op, term),
+				join(op_, term_),
 				[](auto&& a, auto&& e) {
 					return accm(rt::make_node(a, std::get<0>(e), std::get<1>(e)));
 				}
