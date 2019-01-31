@@ -1313,6 +1313,19 @@ namespace tig::cppcp {
 
 		}
 	public:
+		node(const node<Op,Term> n) :type_(n.type_) {
+			switch (n.type_)
+			{
+			case node_type::leaf:
+				new(&data_.term) Term(n.data_.term);
+				break;
+			case node_type::node:
+				new(&data_.node) new node_data<Op,Term>(*n.data_->node);
+				break;
+			default:
+				break;
+			}
+		}
 		node_type type() {
 			return type_;
 		}
