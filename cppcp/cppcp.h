@@ -1417,7 +1417,7 @@ namespace tig::cppcp {
 				}),
 				join(op_, term_),
 				[](auto&& a, auto&& e) {
-					return accm::contd(rt::make_node(a, std::get<0>(e), std::get<1>(e)));
+					return accm::contd(rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
 				}
 			);
 			return c(std::move(src));
