@@ -1468,24 +1468,6 @@ namespace tig::cppcp {
 		constexpr auto parse(source_type_t<Term>&& src)const {
 			static auto c = many(
 				map(term_, [](auto&& e) {
-				return rt::make_leaf(e);
-			}),
-				join(op_, term_),
-				[](auto a, auto&& e) {
-				auto* ref = &a;
-
-				if (ref->type() == node_type::leaf) {
-					return accm::contd(rt::make_node(a, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
-				}
-				while (ref->right().type() == node_type::node) {
-					ref = &ref->right();
-				}
-				auto l_leaf = ref->right();
-				ref->right(rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
-				return accm::contd(a);
-			}		constexpr auto parse(source_type_t<Term>&& src)const {
-			static auto c = many(
-				map(term_, [](auto&& e) {
 					return rt::make_leaf(e);
 				}),
 				join(op_, term_),
@@ -1499,7 +1481,7 @@ namespace tig::cppcp {
 						ref =& ref->right();
 					}
 					auto l_leaf = ref->right();
-					ref->right()=rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e)));
+					ref->right()=rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
 					return accm::contd(a);
 				}
 			);
