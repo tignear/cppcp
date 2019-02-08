@@ -461,4 +461,18 @@ TEST(CppCP, get0)
 	EXPECT_EQ(fn(cbegin(target)).get(), -1);
 }
 
+TEST(CppCP, state_machine_parser)
+{
+	using namespace std::literals::string_literals;
+	using namespace tig::cppcp;
+	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
+	auto&& fn = state_machine_parser(sup<vitr<int>, std::pair<char, std::vector<int>>>(std::pair<char, std::vector<int>>{ 'a',std::vector<int>() }), [](auto&& a, auto&&e) {
+		return accm::contd( a);
+	}, [](const auto k) {
+		return std::optional(map(itr::any<vitr<int>>(), [](auto&& a) {
+			return std::make_pair('a',a);
+		}));
+	});
+	EXPECT_EQ(fn(cbegin(target)).get(),target);
+}
 

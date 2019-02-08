@@ -279,7 +279,12 @@ namespace tig::cppcp {
 			return static_cast<const T&>(*this).parse(std::move(src));
 		}
 	};
-
+	template<class Src, class R, class T>
+	struct parser_def_helper:public parser<Src,R,T>
+	{
+	protected:
+		using ret_type = ret<Src, R>;
+	};
 	template<class Ph, class... Pt>
 	struct parser_type_traits {
 		using source_type = typename std::remove_reference_t<Ph>::source_type;
@@ -530,6 +535,10 @@ namespace tig::cppcp {
 		template<class T>
 		constexpr std::pair<bool, T> terminate(T t) {
 			return std::make_pair(true, t);
+		}
+		template<class Pair>
+		constexpr bool is_terminate(const Pair p) {
+			return p.first;
 		}
 	}
 	template<class PI, class PA, class Accumulator>
@@ -1481,7 +1490,7 @@ namespace tig::cppcp {
 						ref =& ref->right();
 					}
 					auto l_leaf = ref->right();
-					ref->right()=rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e))));
+					ref->right()=rt::make_node(l_leaf, std::get<0>(e), rt::make_leaf(std::get<1>(e)));
 					return accm::contd(a);
 				}
 			);
@@ -1489,4 +1498,56 @@ namespace tig::cppcp {
 			
 		}
 	};
+	template<size_t index, class Src, class Key, class Accm, class Tuple, class RT>
+	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, Key k, Accm accm, Tuple t, RT&& rv, std::enable_if_t<std::tuple_size_v<Tuple> == index>* = nullptr) {
+		throw all_of_parser_failed_exception();
+	}
+	template<size_t index,class Src,class Key,class Accm,class Tuple,class RT>
+	constexpr ret<Src,std::decay_t<RT>> state_machine_parser_impl(Src&& s,Key k,Accm accm,Tuple t,RT&& rv,std::enable_if_t<std::tuple_size_v<Tuple> !=index>* =nullptr){
+		auto p=std::get<index>(t)(k);
+		if (!p) {
+			return state_machine_parser_impl<index + 1>(std::move(s),k, accm, t,std::move(rv));
+		}
+		auto ns = s;
+		try {
+			auto pr =p.value()(std::move(s));
+			auto nr = accm(std::move(rv), pr.get().second);
+			if (nr.first) {
+				return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
+			}
+			return state_machine_parser_impl<0>(pr.itr(), pr.get().first,accm,t, nr.second);
+		}
+		catch (parser_exception) {
+			//do nothing
+		}
+		return state_machine_parser_impl<index + 1>(std::move(ns), k, accm, t, std::move(rv));
+
+	}
+
+	template<class Key,class Init,class Accm,class... Case>
+	class state_machine_parser:public parser_def_helper<
+		source_type_t<Init>,
+		std::decay_t<typename result_type_t<Init>::second_type>,
+		state_machine_parser<Key,Init,Accm,Case...>
+	>{
+		Init init_;
+		Accm accm_;
+		std::tuple<Case...> cs_;
+	public:
+		constexpr state_machine_parser(Init init,Accm accm,Case... cs) :init_(init),accm_(accm),cs_{cs...} {
+
+		}
+		constexpr ret<source_type_t<Init>,typename result_type_t<Init>::second_type> parse(source_type_t<Init>&& src)const {
+			auto r = init_(std::move(src));
+			//return ret<source_type_t<Init>, typename result_type_t<Init>::second_type>{r.itr(), r.get().second};
+			return state_machine_parser_impl<0>(r.itr(), r.get().first,accm_,cs_,r.get().second);
+		}
+	};
+	template<class Init, class Accm, class... Case>
+	state_machine_parser(Init init, Accm accm, Case... cs)->state_machine_parser<
+		typename result_type_t<Init>::first_type,
+		Init,
+		Accm,
+		Case...
+	>;
 }
