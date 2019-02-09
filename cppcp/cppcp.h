@@ -1508,6 +1508,16 @@ namespace tig::cppcp {
 				return typing_nullopt<P>;
 			};
 		}
+		template<class K, class F>
+		constexpr auto end_with(K k, F f) {
+			return [=](auto&& a, const auto& argK, auto&&e) {
+				if (argK == k) {
+					return accm::terminate(f(std::move(a),std::move(e)));
+				}
+				return accm::contd(f(std::move(a), std::move(e)));
+
+			};
+		}
 	}
 	template<size_t index, class Src, class Key, class Accm, class Tuple, class RT>
 	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, Key k, Accm accm, Tuple t, RT&& rv, std::enable_if_t<std::tuple_size_v<Tuple> == index>* = nullptr) {
