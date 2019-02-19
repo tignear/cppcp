@@ -1543,7 +1543,7 @@ namespace tig::cppcp {
 						return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
 					}
 					try {
-						return state_machine_parser_impl(std::move(pr.itr()), pr.get().first, std::move(accm), std::move(t), nr.second);
+						return state_machine_parser_impl(std::move(pr.itr()), pr.get().first, std::move(accm), std::move(t),std::move( nr.second));
 					}
 					catch (parser_exception ex) {
 						throw cppcp::uncaught_parser_exception(ex);
