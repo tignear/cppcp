@@ -1534,20 +1534,32 @@ namespace tig::cppcp {
 		auto p = po.value();
 		static_assert(std::is_same_v<exit_tag, decltype(p)> || is_parser_v<decltype(p)>, "bad arguments");
 		if constexpr (is_parser_v<decltype(p)>) {
-			/*auto ns = s;
-			try {*/
+			auto ns = s;
+			try {
+				try {
 
-				auto pr = p(std::move(s));
-				auto nr = accm(std::move(rv), k, pr.get().second);
-				if (nr.first) {
-					return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
+					auto pr = p(std::move(s));
+					auto nr = accm(std::move(rv), k, pr.get().second);
+					if (nr.first) {
+						return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
+					}
+					try {
+						return state_machine_parser_impl(std::move(pr.itr()), pr.get().first, std::move(accm), std::move(t), nr.second);
+					}
+					catch (parser_exception ex) {
+						throw cppcp::uncaught_parser_exception(ex);
+					}
 				}
-				return state_machine_parser_impl(std::move(pr.itr()), pr.get().first, std::move(accm), std::move(t), nr.second);
-			/*}
-			catch (parser_exception) {
-				//do nothing
+				catch (parser_exception) {
+					//do nothing
+				}			
+				return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, std::move(accm), std::move(t), std::move(rv)); 
+
 			}
-			return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, std::move(accm), std::move(t), std::move(rv));*/
+			catch(uncaught_parser_exception<parser_exception> ex){
+				throw ex.get_reason_exception();
+			}
+
 		}
 		else{
 			return  ret<Src, std::decay_t<RT>>{s,rv};
