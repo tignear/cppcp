@@ -1524,16 +1524,16 @@ namespace tig::cppcp {
 			};
 		}
 	}
-	template<size_t index, class Src, class Key, class Accm, class Tuple, class RT>
-	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, RT&& rv, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
+	template<size_t index, class RT, class Src, class Key, class Accm, class Tuple>
+	constexpr ret<Src, std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
 		throw all_of_parser_failed_exception();
 	}
-	template<size_t index,class Src,class Key,class Accm,class Tuple,class RT>
-	constexpr ret<Src,std::decay_t<RT>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,RT&& rv,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
+	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
+	constexpr ret<Src,std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
 
 		auto po=std::get<index>(t)(k);
 		if (!po) {
-			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, std::move(accm), std::move(t), std::move(rv));
+			return state_machine_parser_impl_impl<index + 1,RT>(std::move(s), k, std::move(accm), std::move(t));
 		}
 		static_assert(std::is_same_v<exit_tag, std::decay_t<decltype(po.value())>> || is_parser_v<std::decay_t<decltype(po.value())>>, "bad arguments");
 		if constexpr (is_parser_v< std::decay_t<decltype(po.value())>>) {
@@ -1541,8 +1541,9 @@ namespace tig::cppcp {
 			try {
 				try {
 
-					auto pr = po.value()(std::move(s));
-					auto nr = accm(std::move(rv), k, pr.get().second);
+					auto m=po.value()(std::move(s));
+					return ret<Src, std::optional<std::decay_t<RT>>>{m.itr(), m.get()};
+					/*auto nr = accm(std::move(rv), k, pr.get().second);
 					if (nr.first) {
 						return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
 					}
@@ -1551,12 +1552,12 @@ namespace tig::cppcp {
 					}
 					catch (parser_exception ex) {
 						throw cppcp::uncaught_parser_exception(ex);
-					}
+					}*/
 				}
 				catch (parser_exception) {
 					//do nothing
 				}			
-				return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, std::move(accm), std::move(t), std::move(rv)); 
+				return state_machine_parser_impl_impl<index + 1,RT>(std::move(ns), k, std::move(accm), std::move(t)); 
 
 			}
 			catch(uncaught_parser_exception<parser_exception> ex){
@@ -1565,21 +1566,44 @@ namespace tig::cppcp {
 
 		}
 		else{
-			return  ret<Src, std::decay_t<RT>>{s,rv};
+			return  ret<Src,std::optional<std::decay_t<RT>>>{s,std::nullopt};
 		}
 		
 	}
 	template<class Src, class Keys, class Accm, class Tuple, class RT>
 	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s,const Keys& ks, Accm accm, Tuple t,RT&& rv) {
-		for (auto&& k : ks) {
-			auto cs = s;
-			auto rvc = rv;
-			try {
-				return state_machine_parser_impl_impl<0>(std::move(cs), k, accm, t,std::move(rvc));
+		auto r = rv;
+		auto itr = s;
+		try {
+			for (auto&& k : ks) {
+				auto cs = itr;
+				//auto rvc = rv;
+				try {
+					auto pr = state_machine_parser_impl_impl<0, std::pair<std::decay_t<Keys>, typename RT::value_type>>(std::move(cs), k, accm, t);
+					itr = pr.itr();
+					if (!pr.get()) {
+						return ret<Src, std::decay_t<RT>>{itr, r};
+					}
+					auto nr = accm(std::move(r), k, pr.get().value().second);
+					r = std::move(nr.second);
+					if (nr.first) {
+						return ret<Src, std::decay_t<RT>>{itr, r};
+					}
+					try {
+						return state_machine_parser_impl(std::move(itr), std::move(pr.get().value().first), std::move(accm), std::move(t), std::move(r));
+					}
+					catch (parser_exception ex) {
+						throw uncaught_parser_exception(ex);
+					}
+				}
+				catch (parser_exception) {
+
+				}
 			}
-			catch(parser_exception){
-				
-			}
+
+		}
+		catch (uncaught_parser_exception<parser_exception> ex) {
+			throw ex.get_reason_exception();
 		}
 		throw all_of_parser_failed_exception();
 	}
