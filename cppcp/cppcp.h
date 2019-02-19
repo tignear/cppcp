@@ -1532,7 +1532,7 @@ namespace tig::cppcp {
 			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, std::move(accm), std::move(t), std::move(rv));
 		}
 		static_assert(std::is_same_v<exit_tag, std::decay_t<decltype(po.value())>> || is_parser_v<std::decay_t<decltype(po.value())>>, "bad arguments");
-		if constexpr (is_parser_v<decltype(po.value())>) {
+		if constexpr (is_parser_v< std::decay_t<decltype(po.value())>>) {
 			auto ns = s;
 			try {
 				try {
