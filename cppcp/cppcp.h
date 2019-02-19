@@ -1575,35 +1575,33 @@ namespace tig::cppcp {
 	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s,const Keys& ks, Accm accm, Tuple t,RT&& rv) {
 		auto r = rv;
 		auto itr = s;
+		auto kss = ks;
 		try {
-			for (auto&& k : ks) {
-				auto cs = itr;
-				//auto rvc = rv;
-				try {
-					auto pr = state_machine_parser_impl_impl<0, std::pair<std::decay_t<Keys>, typename RT::value_type>>(std::move(cs), k, accm, t);
-					if (!pr) {
-						return ret{ cs ,r};
-					}
-
-					itr = pr.value().itr();
-
-					auto nr = accm(std::move(r), k, pr.value().get().second);
-					r = std::move(nr.second);
-					if (nr.first) {
-						return ret<Src, std::decay_t<RT>>{itr, r};
-					}
+			while (true) {
+				for (auto&& k : kss) {
+					auto cs = itr;
+					//auto rvc = rv;
 					try {
-						return state_machine_parser_impl(std::move(itr), std::move(pr.value().get().first), std::move(accm), std::move(t), std::move(r));
-					}
-					catch (parser_exception ex) {
-						throw uncaught_parser_exception(ex);
-					}
-				}
-				catch (parser_exception) {
+						auto pr = state_machine_parser_impl_impl<0, std::pair<std::decay_t<Keys>, typename RT::value_type>>(std::move(cs), k, accm, t);
+						if (!pr) {
+							return ret{ cs ,r };
+						}
 
+						itr = pr.value().itr();
+
+						auto nr = accm(std::move(r), k, pr.value().get().second);
+						r = std::move(nr.second);
+						if (nr.first) {
+							return ret<Src, std::decay_t<RT>>{itr, r};
+						}
+						kss = pr.value().get().first;
+						break;
+					}
+					catch (parser_exception) {
+
+					}
 				}
 			}
-
 		}
 		catch (uncaught_parser_exception<parser_exception> ex) {
 			throw ex.get_reason_exception();
