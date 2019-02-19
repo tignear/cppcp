@@ -1531,14 +1531,13 @@ namespace tig::cppcp {
 		if (!po) {
 			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, std::move(accm), std::move(t), std::move(rv));
 		}
-		auto p = po.value();
-		static_assert(std::is_same_v<exit_tag, decltype(p)> || is_parser_v<decltype(p)>, "bad arguments");
-		if constexpr (is_parser_v<decltype(p)>) {
+		static_assert(std::is_same_v<exit_tag, std::decay_t<decltype(po.value())>> || is_parser_v<std::decay_t<decltype(po.value())>>, "bad arguments");
+		if constexpr (is_parser_v<decltype(po.value())>) {
 			auto ns = s;
 			try {
 				try {
 
-					auto pr = p(std::move(s));
+					auto pr = po.value()(std::move(s));
 					auto nr = accm(std::move(rv), k, pr.get().second);
 					if (nr.first) {
 						return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
