@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <iterator>
+
 #include <functional>
 #include <optional>
 #include <tuple>
@@ -1525,11 +1526,11 @@ namespace tig::cppcp {
 		}
 	}
 	template<size_t index, class RT, class Src, class Key, class Accm, class Tuple>
-	constexpr ret<Src, std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
+	constexpr ret<Src,std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
 		throw all_of_parser_failed_exception();
 	}
-	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
-	constexpr ret<Src,std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
+ 	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
+	constexpr ret<Src, std::optional<std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
 
 		auto po=std::get<index>(t)(k);
 		if (!po) {
@@ -1542,7 +1543,7 @@ namespace tig::cppcp {
 				try {
 
 					auto m=po.value()(std::move(s));
-					return ret<Src, std::optional<std::decay_t<RT>>>{m.itr(), m.get()};
+					return ret<Src, std::optional<std::decay_t<RT>>>{m.itr(), std::optional<std::decay_t<RT>>{ m.get()}};
 					/*auto nr = accm(std::move(rv), k, pr.get().second);
 					if (nr.first) {
 						return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
@@ -1580,6 +1581,7 @@ namespace tig::cppcp {
 				//auto rvc = rv;
 				try {
 					auto pr = state_machine_parser_impl_impl<0, std::pair<std::decay_t<Keys>, typename RT::value_type>>(std::move(cs), k, accm, t);
+
 					itr = pr.itr();
 					if (!pr.get()) {
 						return ret<Src, std::decay_t<RT>>{itr, r};
