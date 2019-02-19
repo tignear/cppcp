@@ -1529,33 +1529,33 @@ namespace tig::cppcp {
 
 		auto po=std::get<index>(t)(k);
 		if (!po) {
-			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, accm, t, std::move(rv));
+			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, std::move(accm), std::move(t), std::move(rv));
 		}
 		auto p = po.value();
 		static_assert(std::is_same_v<exit_tag, decltype(p)> || is_parser_v<decltype(p)>, "bad arguments");
 		if constexpr (is_parser_v<decltype(p)>) {
-			auto ns = s;
-			try {
+			/*auto ns = s;
+			try {*/
 
 				auto pr = p(std::move(s));
 				auto nr = accm(std::move(rv), k, pr.get().second);
 				if (nr.first) {
 					return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
 				}
-				return state_machine_parser_impl(pr.itr(), pr.get().first, accm, t, nr.second);
-			}
+				return state_machine_parser_impl(std::move(pr.itr()), pr.get().first, std::move(accm), t, nr.second);
+			/*}
 			catch (parser_exception) {
 				//do nothing
 			}
-			return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, accm, t, std::move(rv));
+			return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, std::move(accm), std::move(t), std::move(rv));*/
 		}
 		else{
 			return  ret<Src, std::decay_t<RT>>{s,rv};
 		}
 		
 	}
-	template<class Src, class Key, class Accm, class Tuple, class RT>
-	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, std::vector<Key> ks, Accm accm, Tuple t,RT&& rv) {
+	template<class Src, class Keys, class Accm, class Tuple, class RT>
+	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, Keys ks, Accm accm, Tuple t,RT&& rv) {
 		for (auto&& k : ks) {
 			auto cs = s;
 			auto rvc = rv;
