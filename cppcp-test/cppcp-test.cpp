@@ -467,17 +467,18 @@ TEST(CppCP, state_machine)
 	using namespace tig::cppcp;
 	std::vector<int> target{ -1,0 ,1,2,3,4,5 };
 	auto&& fn = state_machine_parser(
-		sup<vitr<int>, std::pair<char, std::vector<int>>>(std::pair<char, std::vector<int>>{ 'a',std::vector<int>() }),
-		branch::end_with('c', [](auto&& a, auto&& e) {
+		sup<vitr<int>, std::pair< std::vector<char>, std::vector<int>>>(std::pair< std::vector<char>, std::vector<int>>{  std::vector<char>{'a'}, std::vector<int>() }),
+		 [](auto&& a,auto&&, auto&& e) {
 			a.push_back(e);
-			return a;
-		}),
+			return accm::contd(a);
+		},
 		branch::value_with('a', map(itr::any<vitr<int>>(), [](auto&& e) {
-			return std::pair{'b', e };
+			return std::pair{ std::vector<char>{'b'}, e };
 		})),
 		branch::value_with('b',map(itr::any<vitr<int>>(), [](auto&& e) {
-			return std::pair{ 'c', e-2 };
-		}))
+			return std::pair{ std::vector<char>{'c'}, e-2 };
+		})),
+		branch::end_with('c')
 		);
 	auto expect = std::vector<int>{ -1, -2 };
 	EXPECT_EQ(fn(cbegin(target)).get(), expect);

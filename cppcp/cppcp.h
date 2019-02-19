@@ -1498,6 +1498,7 @@ namespace tig::cppcp {
 			
 		}
 	};
+	struct exit_tag {};
 	namespace branch {
 		template<class V,class P>
 		constexpr auto value_with(V v,P p) {
@@ -1508,43 +1509,65 @@ namespace tig::cppcp {
 				return typing_nullopt<P>;
 			};
 		}
-		template<class K, class F>
-		constexpr auto end_with(K k, F f) {
-			return [=](auto&& a, const auto& argK, auto&&e) {
-				if (argK == k) {
-					return accm::terminate(f(std::move(a),std::move(e)));
+		template<class K>
+		constexpr auto end_with(K k) {
+			return [=](const auto& argV)->std::optional<exit_tag> {
+				if (argV == k) {
+					return exit_tag{};
 				}
-				return accm::contd(f(std::move(a), std::move(e)));
+				return std::nullopt;
 
 			};
 		}
 	}
 	template<size_t index, class Src, class Key, class Accm, class Tuple, class RT>
-	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, Key k, Accm accm, Tuple t, RT&& rv, std::enable_if_t<std::tuple_size_v<Tuple> == index>* = nullptr) {
+	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, Tuple t, RT&& rv, std::enable_if_t<std::tuple_size_v<Tuple> == index>* = nullptr) {
 		throw all_of_parser_failed_exception();
 	}
 	template<size_t index,class Src,class Key,class Accm,class Tuple,class RT>
-	constexpr ret<Src,std::decay_t<RT>> state_machine_parser_impl(Src&& s,Key k,Accm accm,Tuple t,RT&& rv,std::enable_if_t<std::tuple_size_v<Tuple> !=index>* =nullptr){
-		auto p=std::get<index>(t)(k);
-		if (!p) {
-			return state_machine_parser_impl<index + 1>(std::move(s),k, accm, t,std::move(rv));
+	constexpr ret<Src,std::decay_t<RT>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,Tuple t,RT&& rv,std::enable_if_t<std::tuple_size_v<Tuple> !=index>* =nullptr){
+
+		auto po=std::get<index>(t)(k);
+		if (!po) {
+			return state_machine_parser_impl_impl<index + 1>(std::move(s), k, accm, t, std::move(rv));
 		}
-		auto ns = s;
-		try {
-			auto pr =p.value()(std::move(s));
-			auto nr = accm(std::move(rv), pr.get().first, pr.get().second);
-			if (nr.first) {
-				return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
+		auto p = po.value();
+		static_assert(std::is_same_v<exit_tag, decltype(p)> || is_parser_v<decltype(p)>, "bad arguments");
+		if constexpr (is_parser_v<decltype(p)>) {
+			auto ns = s;
+			try {
+
+				auto pr = p(std::move(s));
+				auto nr = accm(std::move(rv), k, pr.get().second);
+				if (nr.first) {
+					return ret<Src, std::decay_t<RT>>{pr.itr(), nr.second};
+				}
+				return state_machine_parser_impl(pr.itr(), pr.get().first, accm, t, nr.second);
 			}
-			return state_machine_parser_impl<0>(pr.itr(), pr.get().first,accm,t, nr.second);
+			catch (parser_exception) {
+				//do nothing
+			}
+			return state_machine_parser_impl_impl<index + 1>(std::move(ns), k, accm, t, std::move(rv));
 		}
-		catch (parser_exception) {
-			//do nothing
+		else{
+			return  ret<Src, std::decay_t<RT>>{s,rv};
 		}
-		return state_machine_parser_impl<index + 1>(std::move(ns), k, accm, t, std::move(rv));
-
+		
 	}
-
+	template<class Src, class Key, class Accm, class Tuple, class RT>
+	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s, std::vector<Key> ks, Accm accm, Tuple t,RT&& rv) {
+		for (auto&& k : ks) {
+			auto cs = s;
+			auto rvc = rv;
+			try {
+				return state_machine_parser_impl_impl<0>(std::move(cs), k, accm, t,std::move(rvc));
+			}
+			catch(parser_exception){
+				
+			}
+		}
+		throw all_of_parser_failed_exception();
+	}
 	template<class Key,class Init,class Accm,class... Case>
 	class state_machine_parser:public parser_def_helper<
 		source_type_t<Init>,
@@ -1560,7 +1583,7 @@ namespace tig::cppcp {
 		}
 		constexpr ret<source_type_t<Init>,typename result_type_t<Init>::second_type> parse(source_type_t<Init>&& src)const {
 			auto r = init_(std::move(src));
-			return state_machine_parser_impl<0>(r.itr(), r.get().first,accm_,cs_,r.get().second);
+			return state_machine_parser_impl(r.itr(), r.get().first,accm_,cs_,r.get().second);
 		}
 	};
 	template<class Init, class Accm, class... Case>
