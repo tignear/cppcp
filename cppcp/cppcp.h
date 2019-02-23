@@ -1527,7 +1527,7 @@ namespace tig::cppcp {
 	}
 	template<size_t index, class RT, class Src, class Key, class Accm, class Tuple>
 	constexpr std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
-		throw uncaught_parser_exception<all_of_parser_failed_exception>(all_of_parser_failed_exception());
+		throw all_of_parser_failed_exception>();
 	}
  	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
 	constexpr std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
@@ -1574,8 +1574,9 @@ namespace tig::cppcp {
 		auto itr = s;
 		auto kss = ks;
 		try {
-			while (true) {
-				for (auto&& k : kss) {
+			while (!kss.empty()) {
+				for (auto itr2 = cbegin(kss); itr2 != cend(kss);) {
+					auto k = *itr2;
 					auto cs = itr;
 					//auto rvc = rv;
 					try {
@@ -1592,15 +1593,16 @@ namespace tig::cppcp {
 							return ret<Src, std::decay_t<RT>>{itr, r};
 						}
 						kss = pr.value().get().first;
+
 						break;
 					}
 					catch (parser_exception) {
-
+						kss.erase(itr2);
 					}
 				}
 			}
 		}
-		catch (uncaught_parser_exception<parser_exception> ex) {
+		catch (uncaught_parser_exception<all_of_parser_failed_exception> ex) {
 			throw ex.get_reason_exception();
 		}
 		throw all_of_parser_failed_exception();
