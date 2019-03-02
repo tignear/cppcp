@@ -1527,7 +1527,7 @@ namespace tig::cppcp {
 	}
 	template<size_t index, class RT, class Src, class Key, class Accm, class Tuple>
 	constexpr std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s, Key k, Accm accm, const Tuple& t, std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> == index>* = nullptr) {
-		throw all_of_parser_failed_exception>();
+		throw all_of_parser_failed_exception();
 	}
  	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
 	constexpr std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
