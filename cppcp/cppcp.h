@@ -1597,7 +1597,7 @@ namespace tig::cppcp {
 						break;
 					}
 					catch (parser_exception) {
-						kss.erase(itr2);
+						itr2=kss.erase(itr2);
 					}
 				}
 			}
