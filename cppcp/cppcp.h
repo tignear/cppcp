@@ -255,13 +255,26 @@ namespace tig::cppcp {
 	};
 	template < class From, template<class...> class To >
 	struct convart_wrapping_object {
-		using type = typename decltype(decltype(convart_wrapping_object_impl(
-			std::declval<From>(),std::make_index_sequence<std::tuple_size_v<std::decay_t<From>>>{}
-		))::value<To>{})::type;
+		using type = typename decltype(convart_wrapping_object_impl(
+			std::declval<From>(),std::make_index_sequence<std::tuple_size_v<std::decay_t<From>>>()
+		))::value<To>::type;
 	};
 	template < class From, template<class...> class To >
 	using convart_wrapping_object_t = typename convart_wrapping_object<From, To>::type;
-
+	namespace accm {
+		template<class T>
+		constexpr std::pair<bool,T> contd(T t) {
+			return std::make_pair(false, t);
+		}
+		template<class T>
+		constexpr std::pair<bool, T> terminate(T t) {
+			return std::make_pair(true, t);
+		}
+		template<class Pair>
+		constexpr bool is_terminate(const Pair p) {
+			return p.first;
+		}
+	}
 	template<class Src, class R>
 	class ret;
 
@@ -322,19 +335,21 @@ namespace tig::cppcp {
 		}
 	};
 
-	template<class Fn>
-	struct parser_builder{
-		template<class Src,class Out>
+	template<class Src,class Out,class Fn>
+	struct parser_builder_obj{
 		using To = parser_f<Src, Out, Fn>;
 		Fn f_;
-		constexpr parser_builder(Fn f):f_(f) {
+		constexpr parser_builder_obj(Fn f):f_(f) {
 
 		}
-		template<class Src, class Out>
-		constexpr To<Src,Out> build() {
-			return parser_f<Src, Out, Fn>{f_};
+		constexpr To build() {
+			return To{f_};
 		}
 	};
+	template<class Src,class Out,class Fn>
+	parser_builder_obj<Src, Out, Fn> parser_builder(Fn f){
+		return parser_builder_obj<Src, Out, Fn>(f);
+	}
 	class parser_exception_base:public std::exception {
 
 	};
@@ -371,7 +386,7 @@ namespace tig::cppcp {
 			return ret_;
 		}
 		constexpr R* operator->() {
-			return &ret;
+			return &ret_;
 		}
 		template<class NR>
 		constexpr ret<Src, NR> map(std::function<NR(R&&)> fn)&& {
@@ -438,11 +453,12 @@ namespace tig::cppcp {
 		private:
 			Src end_;
 			any<Src> p_{};
+			using parent_t=parser<Src, std::optional<typename std::iterator_traits<Src>::value_type>, any_unless_end<Src>>;
 		public:
 			constexpr any_unless_end(Src end) :end_(end) {
 
 			}
-			constexpr ret<Src,typename parser::result_type> parse(Src&& src)const {
+			constexpr ret<Src,typename parent_t::result_type> parse(Src&& src)const {
 				if (src == end_) {
 					return ret{ src,std::optional<typename std::iterator_traits<Src>::value_type>() };
 				}
@@ -528,25 +544,13 @@ namespace tig::cppcp {
 			f
 		};
 	}
-	namespace accm {
-		template<class T>
-		constexpr std::pair<bool,T> contd(T t) {
-			return std::make_pair(false, t);
-		}
-		template<class T>
-		constexpr std::pair<bool, T> terminate(T t) {
-			return std::make_pair(true, t);
-		}
-		template<class Pair>
-		constexpr bool is_terminate(const Pair p) {
-			return p.first;
-		}
-	}
+
 	template<class PI, class PA, class Accumulator>
 	class fold:public parser<typename PI::source_type,typename PI::result_type,fold<PI,PA, Accumulator>> {
 		PA p_;
 		PI init_;
 		Accumulator accumulator_;
+		using parent_t=parser<typename PI::source_type,typename PI::result_type,fold<PI,PA, Accumulator>>;
 	public:
 		constexpr fold(
 			 PI/*std::function<R(void)>*/ init, PA p,
@@ -554,7 +558,7 @@ namespace tig::cppcp {
 		):p_(p),init_(init),accumulator_(accumulator) {
 
 		}
-		constexpr ret<typename parser::source_type, typename parser::result_type> parse(typename PI::source_type&& src)const{
+		ret<typename parent_t::source_type, typename parent_t::result_type> parse(typename PI::source_type&& src)const{
 			auto&& rs = init_(std::move(src));
 			auto&& itr = rs.itr();
 			auto&& current = rs.get();
@@ -629,6 +633,11 @@ namespace tig::cppcp {
 	/*
 	join start
 	*/
+	template<template<class Target> class SkipJudge>
+	struct transfer_skip_judge{
+		template<class Target>
+		using type=SkipJudge<Target>;
+	};
 	template<bool b, class P>
 	struct join_result_type_single_supplier {
 		using type = std::tuple<P>;
@@ -718,7 +727,7 @@ namespace tig::cppcp {
 	> {
 		std::tuple<P1,Parsers...> ps_;
 	public:
-		constexpr join_c_impl(P1 p1,Parsers... ps):ps_(std::tuple{ p1,ps... }) {}
+		constexpr join_c_impl(		transfer_skip_judge<SkipJudge> phantom,P1 p1,Parsers... ps):ps_(std::tuple{ p1,ps... }) {}
 
 		constexpr decltype(
 			join_impl<source_type_t<P1>, std::tuple<P1,std::remove_reference_t<Parsers>...>, SkipJudge, 0, 1+sizeof...(Parsers)>(std::move(std::declval<source_type_t<P1>>()), std::declval<std::tuple<P1,Parsers...>>())
@@ -767,13 +776,13 @@ namespace tig::cppcp {
 	join(
 		Parsers... p
 	)->join<typename parser_type_traits<Parsers...>::source_type,Parsers...>;
-
 	template<template<class Target> class SkipJudge,class... Parsers, std::enable_if_t<is_parser_v<Parsers...>, nullptr_t> =nullptr>
 	join_c_impl(
+		transfer_skip_judge<SkipJudge> phantom,
 		Parsers... p
 	)->join_c_impl<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>;
-	template<class Src>
-	join()->join<Src>;
+	/*template<class Src>
+	join()->join<Src>;*/
 	/*
 		pure join end
 		custom join start
@@ -783,7 +792,7 @@ namespace tig::cppcp {
 		join_c() = delete;
 		template <class... Parsers>
 		constexpr static auto join(Parsers... ps) {
-			return cppcp::join_c_impl<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>{ps...};
+			return cppcp::join_c_impl<typename parser_type_traits<Parsers...>::source_type, SkipJudge, Parsers...>{	transfer_skip_judge<SkipJudge>(),ps...};
 		}
 	};
 	/*
@@ -791,27 +800,27 @@ namespace tig::cppcp {
 	*/
 	template<class P>
 	constexpr auto skip(P p) {
-		return parser_builder{ [=](source_type_t<P>&& src) {
+		return parser_builder<source_type_t<P>, skip_tag>( [=](source_type_t<P>&& src) {
 			return ret<source_type_t<P>, skip_tag> { p(std::move(src)).itr(), skip_tag{} };
-		} }.build<source_type_t<P>, skip_tag>();
+		} ).build();
 	}
 	template<class P>
 	constexpr auto skipN(P p,typename std::iterator_traits<source_type_t<P>>::difference_type n) {
-		return parser_builder{ [=](source_type_t<P>&& src) {
+		return parser_builder<source_type_t<P>, skip_tag>( [=](source_type_t<P>&& src) {
 			auto&& itr = src;
 			for (auto i = 0; i < n; ++i)
 			{
 				itr = p(std::move(itr)).itr();
 			}
 			return ret<source_type_t<P>, skip_tag>{itr, skip_tag{}};
-		} }.build<source_type_t<P>, skip_tag>();
+		} ).build();
 	}
 	template<class Src>
-	constexpr typename auto skipN(typename std::iterator_traits<Src>::difference_type n) {
-		return parser_builder{ [=](Src&& src) {
+	constexpr auto skipN(typename std::iterator_traits<Src>::difference_type n) {
+		return parser_builder<Src, skip_tag>( [=](Src&& src) {
 			std::advance(src, n);
 			return ret<Src, skip_tag>{ src,skip_tag{} };
-		} }.build<Src, skip_tag>();
+		} ).build();
 	}
 	template<class Src,class Fn,class... Rs>
 	constexpr parser<Src,std::tuple<Rs...>,Fn> empty_tuple_as_skip(
@@ -821,13 +830,13 @@ namespace tig::cppcp {
 		return p;
 	}
 	template<class Src,class Fn, class... Rs>
-	constexpr typename auto empty_tuple_as_skip(
+	constexpr auto empty_tuple_as_skip(
 		parser<Src, std::tuple<Rs...>,Fn> p,
 		std::enable_if_t<!not_zero<sizeof...(Rs)>::value>* = 0
 	) {
-		return parser_builder{ [=](Src&& src) {
+		return parser_builder( [=](Src&& src) {
 			return ret<Src, skip_tag>{p(std::move(src)).itr(), skip_tag{}};
-		} }.build<Src, skip_tag>();
+		} ).build<Src, skip_tag>();
 	}
 
 	template<class P, class F>
@@ -847,17 +856,17 @@ namespace tig::cppcp {
 
 	};
 	template<class Src, class F, class R, class Tuple, size_t index, size_t size>
-	constexpr R trys_impl(Src&&, F,Tuple, std::enable_if_t<index == size>* = 0) {
+	R trys_impl(Src&&, F,Tuple, std::enable_if_t<index == size>* = 0) {
 		throw all_of_parser_failed_exception();
 	}
 
 	template<class Src,class F,class R,class Tuple,size_t index,size_t size>
-	constexpr R trys_impl(Src&& src,F f,Tuple tuple,std::enable_if_t<index!=size>* =0) {
+	R trys_impl(Src&& src,F f,Tuple tuple,std::enable_if_t<index!=size>* =0) {
 		auto m = src;
 		try {
 			auto r = std::get<index>(tuple)(std::move(src));
 			if (f(r.get())) {
-				return { r.itr(),r.get() };
+				return R( r.itr(),r.get());
 			}
 		}
 		catch(const parser_exception&){
@@ -865,7 +874,6 @@ namespace tig::cppcp {
 		}
 		return trys_impl<Src, F, R,Tuple,index+1,size>(std::move(m),f,tuple);
 	}
-
 	template<class F, class... Parsers>
 	class trys_internal :public parser<
 		typename parser_type_traits<Parsers...>::source_type,
@@ -874,12 +882,14 @@ namespace tig::cppcp {
 	> {
 		F f_;
 		std::tuple<Parsers...> parsers_;
+		template <typename T>
+		constexpr static bool false_v = false;
 	public:
 		constexpr trys_internal(F f, Parsers... parsers) :f_(f), parsers_{ parsers... } {}
 
 
-		constexpr trys_internal(F f) : f_(f), parsers{} {
-			static_assert(false,"parsers are one or more args required.");
+		constexpr trys_internal(F f) : f_(f), parsers_{} {
+			static_assert(false_v<F>,"parsers are one or more args required.");
 		}
 		//constexpr trys(Parsers... parsers, std::enable_if_t<is_parser_v<Parsers>>* = nullptr) : f_(always_true), parsers_{ parsers... } {}
 
@@ -986,10 +996,10 @@ namespace tig::cppcp {
 	class throwing :public parser<Src, R, throwing<Src, R>> {
 		parser_exception ex_;
 	public:
-		constexpr throwing(parser_exception ex):ex_(ex) {
+		throwing(parser_exception ex):ex_(ex) {
 
 		}
-		constexpr ret<Src,R> parse(Src&& src)const {
+		ret<Src,R> parse(Src&& src)const {
 			throw ex_;
 		}
 	};
@@ -1001,7 +1011,7 @@ namespace tig::cppcp {
 		constexpr catching(P p,F f):p_(p),f_(f) {
 
 		}
-		constexpr ret<source_type_t<P>, result_type_t<P>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>, result_type_t<P>> parse(source_type_t<P>&& src)const {
 			auto m = src;
 			try {
 				return p_(std::move(src));
@@ -1039,7 +1049,7 @@ namespace tig::cppcp {
 		constexpr many(R init, P p, F updateFn) :p_(p),f_(updateFn),init_(init) {
 
 		}
-		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
 			auto s = src;
 			auto ri = init_(std::move(s));
 			s = ri.itr();
@@ -1074,7 +1084,7 @@ namespace tig::cppcp {
 		constexpr manyN(R init, P p,size_t n,  F updateFn) :n_(n),p_(p), f_(updateFn), init_(init) {
 
 		}
-		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
 			auto s = src;
 			auto ri = init_(std::move(s));
 			s = ri.itr();
@@ -1114,7 +1124,7 @@ namespace tig::cppcp {
 		constexpr manyNM(R init, P p, size_t n,size_t m, F updateFn) :n_(n),m_(m), p_(p), f_(updateFn), init_(init) {
 
 		}
-		constexpr ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>, result_type_t<R>> parse(source_type_t<P>&& src)const {
 			auto s = src;
 			auto ri = init_(std::move(s));
 			s = ri.itr();
@@ -1150,7 +1160,7 @@ namespace tig::cppcp {
 		return p(std::move(s));
 	}
 	template<class P,class S,class Eh,class... Et>
-	constexpr auto to_uncatching_impl(P p,S&& s) {
+	auto to_uncatching_impl(P p,S&& s) {
 		try {
 			return to_uncatching_impl<P, Et...>(p, std::move(s));
 		}
@@ -1180,7 +1190,7 @@ namespace tig::cppcp {
 		return p(std::move(s));
 	}
 	template<class P, class S, class Eh, class... Et>
-	constexpr auto to_catching_impl(P p, S&& s) {
+	auto to_catching_impl(P p, S&& s) {
 		try {
 			return to_catching_impl<P, Et...>(p, std::move(s));
 		}
@@ -1213,7 +1223,7 @@ namespace tig::cppcp {
 
 		}
 
-		constexpr ret<source_type_t<P>,std::common_type_t<V,result_type_t<P>>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>,std::common_type_t<V,result_type_t<P>>> parse(source_type_t<P>&& src)const {
 			auto m = src;
 			try {
 				auto r = p_(std::move(src));
@@ -1236,10 +1246,10 @@ namespace tig::cppcp {
 
 		}
 		template<class V>
-		constexpr auto or (V v) {
-			return option_or(p_, v, f_);
+		constexpr auto or_(V v){
+			return option_or(p_,v,f_);
 		}
-		constexpr ret<source_type_t<P>,std::optional<result_type_t<P>>> parse(source_type_t<P>&& src)const {
+		ret<source_type_t<P>,std::optional<result_type_t<P>>> parse(source_type_t<P>&& src)const {
 			auto m = src;
 			try {
 				auto r = p_(std::move(src));
@@ -1448,7 +1458,7 @@ namespace tig::cppcp {
 		constexpr expression_left(Term term,Op op):term_(term),op_(op) {
 
 		}
-		constexpr auto parse(source_type_t<Term>&& src)const {
+		auto parse(source_type_t<Term>&& src)const {
 			static auto c=many(
 				map(term_, [](auto&& e) {
 					return rt::make_leaf(e);
@@ -1476,7 +1486,7 @@ namespace tig::cppcp {
 
 		}
 		constexpr auto parse(source_type_t<Term>&& src)const {
-			static auto c = many(
+			auto c = many(
 				map(term_, [](auto&& e) {
 					return rt::make_leaf(e);
 				}),
@@ -1530,7 +1540,7 @@ namespace tig::cppcp {
 		throw all_of_parser_failed_exception();
 	}
  	template<size_t index, class RT, class Src,class Key,class Accm,class Tuple>
-	constexpr std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
+	std::optional<ret<Src, std::decay_t<RT>>> state_machine_parser_impl_impl(Src&& s,Key k,Accm accm,const Tuple& t,std::enable_if_t<std::tuple_size_v<std::decay_t<Tuple>> !=index>* =nullptr){
 
 		auto po=std::get<index>(t)(k);
 		if (!po) {
@@ -1569,7 +1579,7 @@ namespace tig::cppcp {
 		
 	}
 	template<class Src, class Keys, class Accm, class Tuple, class RT>
-	constexpr ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s,const Keys& ks, Accm accm, Tuple t,RT&& rv) {
+	ret<Src, std::decay_t<RT>> state_machine_parser_impl(Src&& s,const Keys& ks, Accm accm, Tuple t,RT&& rv) {
 		auto r = rv;
 		auto itr = s;
 		auto kss = ks;
