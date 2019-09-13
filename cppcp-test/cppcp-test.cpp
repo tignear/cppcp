@@ -201,14 +201,14 @@ TEST(CppCP, empty_tuple_as_skip_through) {
     EXPECT_EQ(r.itr(), std::next(cbegin(target), 2));
 }
 
-/*TEST(CppCP, skipNWithParser) {
+TEST(CppCP, skipNWithParser) {
     using namespace tig::cppcp;
     std::vector<int> target{-1, 0, 1, 2, 3, 4, 5};
     auto &&fn = skipN(join(itr::any<vitr<int>>(), itr::any<vitr<int>>()), 2);
     auto &&r = fn(cbegin(target));
     skip_tag tag = r.get();
     EXPECT_EQ(r.itr(), std::next(cbegin(target), 4));
-}*/
+}
 TEST(CppCP, skipNWithCount) {
     using namespace tig::cppcp;
     std::vector<int> target{-1, 0, 1, 2, 3, 4, 5};
