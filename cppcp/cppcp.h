@@ -28,7 +28,7 @@ template <class Left, class Right> class either {
     using left_type = Left;
     using right_type = Right;
     template <
-        class T = std::enable_if_t<std::is_same_v<Left, Right>, nullptr_t>>
+        class T = std::enable_if_t<std::is_same_v<Left, Right>>>
     constexpr either(Left const &v, either_tag tag) : tag_(tag) {
         switch(tag) {
         case either_tag::LEFT:
@@ -40,7 +40,7 @@ template <class Left, class Right> class either {
         }
     }
     template <
-        class T = std::enable_if_t<std::is_same_v<Left, Right>, nullptr_t>>
+        class T = std::enable_if_t<std::is_same_v<Left, Right>>>
     constexpr either(Right const &v, either_tag tag) : tag_(tag) {
         switch(tag) {
         case either_tag::LEFT:
@@ -231,18 +231,22 @@ struct unique_type_impl {
 template <class... Targets>
 using unique_type_t =
     typename unique_type_impl<std::tuple<Targets...>, 0>::type;
-template <class From, size_t... I> struct convart_wrapping_object_impl {
-    constexpr convart_wrapping_object_impl(From, std::index_sequence<I...>) {}
-    template <template <class...> class To> struct value {
+/*template <size_t... I> struct convart_wrapping_object_impl {
+    constexpr convart_wrapping_object_impl(std::index_sequence<I...>) {}
+    template <class From, template <class...> class To> struct value {
         using type = To<std::decay_t<get_t<From, I>>...>;
     };
-};
+};*/
 template <class From, template <class...> class To>
 struct convart_wrapping_object {
-    using type = typename decltype(convart_wrapping_object_impl(
-        std::declval<From>(),
-        std::make_index_sequence<
-            std::tuple_size_v<std::decay_t<From>>>()))::value<To>::type;
+private:
+    template <size_t... I>
+    static To<std::decay_t<get_t<From, I>>...> type_sup(std::index_sequence<I...>){
+        return std::declval<To<std::decay_t<get_t<From, I>>...> >;
+    }
+public:
+    using type = decltype(type_sup(
+        std::make_index_sequence<std::tuple_size_v<std::decay_t<From>>>()));
 };
 template <class From, template <class...> class To>
 using convart_wrapping_object_t =
@@ -712,7 +716,7 @@ template <class... Parsers>
 join(Parsers... p)
     ->join<typename parser_type_traits<Parsers...>::source_type, Parsers...>;
 template <template <class Target> class SkipJudge, class... Parsers,
-          std::enable_if_t<is_parser_v<Parsers...>, nullptr_t> = nullptr>
+          std::enable_if_t<is_parser_v<Parsers...>> = nullptr>
 join_c_impl(transfer_skip_judge<SkipJudge> phantom, Parsers... p)
     ->join_c_impl<typename parser_type_traits<Parsers...>::source_type,
                   SkipJudge, Parsers...>;
@@ -757,8 +761,8 @@ skipN(P p, typename std::iterator_traits<source_type_t<P>>::difference_type n) {
 template <class Src>
 constexpr auto skipN(typename std::iterator_traits<Src>::difference_type n) {
     return parser_builder<Src, skip_tag>([=](Src &&src) {
-               std::advance(src, n);
-               return ret<Src, skip_tag>{src, skip_tag{}};
+                std::advance(src, n);
+                return ret<Src, skip_tag>{src, skip_tag{}};
            })
         .build();
 }
@@ -772,10 +776,10 @@ template <class Src, class Fn, class... Rs>
 constexpr auto
 empty_tuple_as_skip(parser<Src, std::tuple<Rs...>, Fn> p,
                     std::enable_if_t<!not_zero<sizeof...(Rs)>::value> * = 0) {
-    return parser_builder([=](Src &&src) {
+    return parser_builder<Src, skip_tag>([=](Src &&src) {
                return ret<Src, skip_tag>{p(std::move(src)).itr(), skip_tag{}};
            })
-        .build<Src, skip_tag>();
+        .build();
 }
 
 template <class P, class F>
@@ -865,11 +869,11 @@ class trys
 
   public:
     template <class X = H,
-              std::enable_if_t<is_parser_v<X>, nullptr_t> = nullptr>
+              std::enable_if_t<is_parser_v<X>, std::nullptr_t> = nullptr>
     constexpr trys(X h, Parsers... parsers)
         : internal_{always_true, h, parsers...} {}
     template <class X = H,
-              std::enable_if_t<!is_parser_v<X>, nullptr_t> = nullptr>
+              std::enable_if_t<!is_parser_v<X>, std::nullptr_t> = nullptr>
     constexpr trys(X h, Parsers... parsers) : internal_{h, parsers...} {}
     constexpr auto parse(source_type_t<T> &&src) const {
         return internal_(std::move(src));
@@ -922,11 +926,11 @@ class trys_variant
 
   public:
     template <class X = H,
-              std::enable_if_t<is_parser_v<X>, nullptr_t> = nullptr>
+              std::enable_if_t<is_parser_v<X>, std::nullptr_t> = nullptr>
     constexpr trys_variant(X h, Parsers... parsers)
         : internal_{always_true, h, parsers...} {}
     template <class X = H,
-              std::enable_if_t<!is_parser_v<X>, nullptr_t> = nullptr>
+              std::enable_if_t<!is_parser_v<X>, std::nullptr_t> = nullptr>
     constexpr trys_variant(X h, Parsers... parsers)
         : internal_{h, parsers...} {}
     constexpr auto parse(source_type_t<T> &&src) const {
@@ -1239,7 +1243,7 @@ class to_collection_impl
     : parser<source_type_t<P>, To, to_collection_impl<P, To>> {
     P p_;
     constexpr to_collection_impl(P p) : p_(p) {}
-    constexpr auto parse(source_type_t<P> &&s) const {
+    constexpr auto parse(source_type_t<P> &&src) const {
         auto &&r = p_(std::move(src));
         return ret<source_type_t<P>, To>{r.itr(), To{r.get()}};
     }
@@ -1248,7 +1252,7 @@ template <template <class> class To, class P>
 constexpr auto to_collection(P p) {
     return to_collection_impl<P, To<result_type_t<P>>>(p);
 }
-
+template <class Op, class Term> struct node_data;
 template <class Op, class Term> union node_data_or_term_union;
 
 enum class node_type { leaf, node };

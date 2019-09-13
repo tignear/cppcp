@@ -6,7 +6,8 @@ enable_testing()
 set(CMAKE_CXX_STANDARD 17) 
 set(CMAKE_CXX_STANDARD_REQUIRED ON) 
 set(CMAKE_CXX_EXTENSIONS OFF) 
-
+#option(CMAKE_USE_WIN32_THREADS_INIT "using WIN32 threads" ON)
+#option(gtest_disable_pthreads "Disable uses of pthreads in gtest." ON)
 
 project ("cppcp-distribution")
 # サブプロジェクトを含めます。
