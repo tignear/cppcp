@@ -1,13 +1,12 @@
 #include "cppcp.h"
 #include "gtest/gtest.h"
-#include <vector>
 #include <string>
+#include <vector>
 template <class Itr>
 
 class CppCPTest : public ::testing::Test {};
 using sitr = std::string::const_iterator;
-template <class T>
-using vitr =typename std::vector<T>::const_iterator;
+template <class T> using vitr = typename std::vector<T>::const_iterator;
 
 TEST(CppCP, itr_any) {
     std::string target = "abcdef";
@@ -17,9 +16,9 @@ TEST(CppCP, itr_any) {
 }
 TEST(CppCP, filter) {
     std::string target = "abcdef";
-    auto &&fn = tig::cppcp::filter(tig::cppcp::itr::any<sitr>(),
-                                   [](auto &&c) { return c == 'a'; },
-                                   std::optional<char>());
+    auto &&fn = tig::cppcp::filter(
+        tig::cppcp::itr::any<sitr>(), [](auto &&c) { return c == 'a'; },
+        std::optional<char>());
     auto &&r = fn(cbegin(target));
     EXPECT_EQ(r.get(), std::make_optional('a'));
     auto &&r2 = fn(r.itr());
@@ -276,12 +275,12 @@ TEST(CppCP, trys_variant_secondry_true) {
     using namespace tig::cppcp;
     std::vector<int> target{-1, 0, 1, 2, 3, 4, 5};
     auto f = itr::any<vitr<int>>();
-    auto &&fn = trys_variant(
-        overloaded{
-            [](auto arg) { return false; },
-            [](const std::string &arg) { return true; },
-        },
-        f, map(f, [](auto &&e) { return std::to_string(e); }));
+    auto &&fn =
+        trys_variant(overloaded{
+                         [](auto arg) { return false; },
+                         [](const std::string &arg) { return true; },
+                     },
+                     f, map(f, [](auto &&e) { return std::to_string(e); }));
     auto &&r = fn(cbegin(target));
     EXPECT_EQ(std::get<0>(r.get()), "-1"s);
     EXPECT_EQ(r.itr(), std::next(cbegin(target), 1));
@@ -435,11 +434,11 @@ TEST(CppCP, state_machine) {
             a.push_back(e);
             return accm::contd(a);
         },
-        branch::value_with(
-            'a', map(itr::any<vitr<int>>(),
-                     [](auto &&e) {
-                         return std::pair{std::vector<char>{'b'}, e};
-                     })),
+        branch::value_with('a',
+                           map(itr::any<vitr<int>>(),
+                               [](auto &&e) {
+                                   return std::pair{std::vector<char>{'b'}, e};
+                               })),
         branch::value_with(
             'b', map(itr::any<vitr<int>>(),
                      [](auto &&e) {

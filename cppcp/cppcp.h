@@ -27,8 +27,7 @@ template <class Left, class Right> class either {
     const either_tag tag_;
     using left_type = Left;
     using right_type = Right;
-    template <
-        class T = std::enable_if_t<std::is_same_v<Left, Right>>>
+    template <class T = std::enable_if_t<std::is_same_v<Left, Right>>>
     constexpr either(Left const &v, either_tag tag) : tag_(tag) {
         switch(tag) {
         case either_tag::LEFT:
@@ -39,8 +38,7 @@ template <class Left, class Right> class either {
             break;
         }
     }
-    template <
-        class T = std::enable_if_t<std::is_same_v<Left, Right>>>
+    template <class T = std::enable_if_t<std::is_same_v<Left, Right>>>
     constexpr either(Right const &v, either_tag tag) : tag_(tag) {
         switch(tag) {
         case either_tag::LEFT:
@@ -239,12 +237,14 @@ using unique_type_t =
 };*/
 template <class From, template <class...> class To>
 struct convart_wrapping_object {
-private:
+  private:
     template <size_t... I>
-    static To<std::decay_t<get_t<From, I>>...> type_sup(std::index_sequence<I...>){
-        return std::declval<To<std::decay_t<get_t<From, I>>...> >;
+    static To<std::decay_t<get_t<From, I>>...>
+    type_sup(std::index_sequence<I...>) {
+        return std::declval<To<std::decay_t<get_t<From, I>>...>>;
     }
-public:
+
+  public:
     using type = decltype(type_sup(
         std::make_index_sequence<std::tuple_size_v<std::decay_t<From>>>()));
 };
@@ -350,8 +350,7 @@ template <class Src, class R> class ret {
     constexpr ret<Src, NR> map(std::function<NR(R &&)> fn) && {
         return ret<Src, NR>(itr_, fn(std::move(ret_)));
     }
-    template <class NR> 
-    constexpr ret<Src, NR> map(std::function<NR(R)> fn) & {
+    template <class NR> constexpr ret<Src, NR> map(std::function<NR(R)> fn) & {
         return ret(itr(), fn(get()));
     }
     template <class NSrc>
@@ -589,28 +588,27 @@ struct join_result_type_supplier<SkipJudge> {
 
 template <class Src, class Tuple, template <class Target> class SkipJudge,
           size_t index, size_t size>
-constexpr auto join_impl(
-    Src &&src, Tuple tuple, 
-        std::enable_if_t<
-            index != size,std::nullptr_t
-        > =nullptr) {
-    if constexpr(SkipJudge<result_type_t<std::remove_reference_t<decltype(std::get<index>(std::declval<Tuple>()))>>>::value){
+constexpr auto
+join_impl(Src &&src, Tuple tuple,
+          std::enable_if_t<index != size, std::nullptr_t> = nullptr) {
+    if constexpr(SkipJudge<result_type_t<std::remove_reference_t<decltype(
+                     std::get<index>(std::declval<Tuple>()))>>>::value) {
         auto r = std::get<index>(tuple)(std::move(src));
         auto r2 = join_impl<Src, Tuple, SkipJudge, index + size_t(1), size>(
             std::move(r.itr()), std::move(tuple));
         return ret{r2.itr(), r2.get()};
-    }else{
+    } else {
         auto r = std::get<index>(tuple)(std::move(src));
         auto r2 = join_impl<Src, Tuple, SkipJudge, index + size_t(1), size>(
             r.itr(), std::move(tuple));
         return ret{r2.itr(), std::tuple_cat(std::tuple{r.get()}, r2.get())};
     }
-
 }
 template <class Src, class Tuple, template <class Target> class SkipJudge,
           size_t index, size_t size>
 constexpr ret<Src, std::tuple<>>
-join_impl(Src &&src, Tuple &&tuple, std::enable_if_t<index == size,std::nullptr_t> =nullptr) {
+join_impl(Src &&src, Tuple &&tuple,
+          std::enable_if_t<index == size, std::nullptr_t> = nullptr) {
     return ret{src, std::make_tuple()};
 }
 
@@ -738,17 +736,18 @@ template <class P> constexpr auto skip(P p) {
                })
         .build();
 }
-template <class Src,class DiffType=typename std::iterator_traits<Src>::difference_type>
+template <class Src,
+          class DiffType = typename std::iterator_traits<Src>::difference_type>
 constexpr auto skipN(DiffType n) {
     return parser_builder<Src, skip_tag>([=](Src &&src) {
-                std::advance(src, n);
-                return ret<Src, skip_tag>{src, skip_tag{}};
+               std::advance(src, n);
+               return ret<Src, skip_tag>{src, skip_tag{}};
            })
         .build();
 }
-template <class P,class DiffType=typename std::iterator_traits<source_type_t<P>>::difference_type>
-constexpr auto
-skipN(P p, DiffType n) {
+template <class P, class DiffType = typename std::iterator_traits<
+                       source_type_t<P>>::difference_type>
+constexpr auto skipN(P p, DiffType n) {
     return parser_builder<source_type_t<P>, skip_tag>(
                [=](source_type_t<P> &&src) {
                    auto &&itr = src;
@@ -785,9 +784,10 @@ class map
 
   public:
     constexpr map(P p, F mapping) : p_(p), mapping_(mapping) {}
-    constexpr ret<source_type_t<P>,std::invoke_result_t<F, result_type_t<P>>> parse(source_type_t<P> &&src) const {
-        auto r= p_(std::move(src));
-        return {r.itr(),mapping_(r.get())};
+    constexpr ret<source_type_t<P>, std::invoke_result_t<F, result_type_t<P>>>
+    parse(source_type_t<P> &&src) const {
+        auto r = p_(std::move(src));
+        return {r.itr(), mapping_(r.get())};
     }
 };
 /*
@@ -796,13 +796,14 @@ class map
 class all_of_parser_failed_exception : public parser_exception {};
 
 template <class Src, class F, class R, class Tuple, size_t index, size_t size>
-R trys_impl(Src &&, F, Tuple, std::enable_if_t<index == size,std::nullptr_t> = nullptr) {
+R trys_impl(Src &&, F, Tuple,
+            std::enable_if_t<index == size, std::nullptr_t> = nullptr) {
     throw all_of_parser_failed_exception();
 }
 
 template <class Src, class F, class R, class Tuple, size_t index, size_t size>
 R trys_impl(Src &&src, F f, Tuple tuple,
-            std::enable_if_t<index != size,std::nullptr_t> = nullptr) {
+            std::enable_if_t<index != size, std::nullptr_t> = nullptr) {
     auto m = src;
     try {
         auto r = std::get<index>(tuple)(std::move(src));

@@ -1,8 +1,10 @@
 ﻿cmake_minimum_required (VERSION 3.10)
+project(cppcp)
 
-include(${PROJECT_SOURCE_DIR}/cmake/FormatFilesWithClangFormat.cmake)
+include(ClangFormat)
 
 
 add_library(cppcp INTERFACE)
 target_include_directories(cppcp INTERFACE ./)
-clang_format(cppcp)
+
+clangformat_setup(cppcp.h)
