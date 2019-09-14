@@ -1,3 +1,6 @@
 [submodule "cmake/DownloadProject"]
 	path = cmake/DownloadProject
 	url = https://github.com/Crascit/DownloadProject
+[submodule "cmake/clangformat-cmake"]
+	path = cmake/clangformat-cmake
+	url = https://github.com/zemasoft/clangformat-cmake.git
