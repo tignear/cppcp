@@ -375,7 +375,6 @@ template <class Src, class R> class ret {
     constexpr Src itr() & { return itr_; }
 };
 
-template <class T> constexpr std::optional<T> typing_nullopt = std::nullopt;
 
 template <class T, class A>
 inline constexpr std::function<std::pair<bool, A>(A, std::optional<T>)>
@@ -436,7 +435,7 @@ class filter : public parser<source_type_t<P>, RT, filter<P, F, RT>> {
     RT fail_;
 
   public:
-    constexpr filter(P p, F f, RT fail = typing_nullopt<result_type_t<P>>)
+    constexpr filter(P p, F f, RT fail = std::optional<result_type_t<P>>())
         : p_(p), f_(f), fail_(fail) {}
     constexpr ret<source_type_t<P>, RT> parse(source_type_t<P> &&src) const {
         auto &&x = p_(std::move(src));
@@ -453,7 +452,7 @@ class reject : public parser<source_type_t<P>, RT, reject<P, F, RT>> {
     RT fail_;
 
   public:
-    constexpr reject(P p, F f, RT fail = typing_nullopt<result_type_t<P>>)
+    constexpr reject(P p, F f, RT fail = std::nullopt)
         : p_(p), f_(f), fail_(fail) {}
     constexpr ret<source_type_t<P>, RT> parse(source_type_t<P> &&src) const {
         auto &&x = p_(std::move(src));
@@ -1428,7 +1427,7 @@ template <class V, class P> constexpr auto value_with(V v, P p) {
         if(argV == v) {
             return std::make_optional(p);
         }
-        return typing_nullopt<P>;
+        return std::optional<decltype(p)>();
     };
 }
 template <class K> constexpr auto end_with(K k) {
